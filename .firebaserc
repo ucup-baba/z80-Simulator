@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "z80-simulation"
+  },
+  "targets": {},
+  "etags": {}
+}
