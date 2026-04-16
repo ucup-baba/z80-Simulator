@@ -2,6 +2,11 @@
 
 :root {
   --font-size: 16px;
+  --scrollbar-track: #f1f1f1;
+  --scrollbar-thumb: #c1c1c1;
+  --scrollbar-thumb-hover: #a1a1a1;
+  --selection-bg: rgba(59, 130, 246, 0.3);
+  --selection-text: inherit;
   --background: #ffffff;
   --foreground: oklch(0.145 0 0);
   --card: #ffffff;
@@ -42,6 +47,11 @@
 }
 
 .dark {
+  --scrollbar-track: #18181b;
+  --scrollbar-thumb: #3f3f46;
+  --scrollbar-thumb-hover: #52525b;
+  --selection-bg: rgba(59, 130, 246, 0.4);
+  --selection-text: #fff;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.145 0 0);
