@@ -141,7 +141,7 @@ export const RegisterDashboard: React.FC<RegisterDashboardProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="grid grid-cols-3 gap-3 p-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
           {/* Left Column - Main Registers */}
           <div className="space-y-1.5">
             <h3 className={`text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-2`} style={{ fontFamily: 'var(--font-sans)' }}>Main registers</h3>

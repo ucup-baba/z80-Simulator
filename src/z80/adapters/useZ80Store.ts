@@ -6,12 +6,14 @@
 import { create } from 'zustand';
 import type { CPUState } from '../domain';
 import type { Program } from '../usecases';
+import type { AnalysisResult } from '../usecases';
 import {
   createCPUState,
   resetCPUState,
   loadProgram,
   step,
   runToCompletion,
+  analyzeProgram,
 } from '../usecases';
 
 interface ExecutionLogEntry {
@@ -28,6 +30,7 @@ interface Z80Store {
   executionLog: ExecutionLogEntry[];
   isRunning: boolean;
   parseError: string | null;
+  analysisResult: AnalysisResult | null;
 
   // Actions
   setSourceCode: (code: string) => void;
@@ -37,6 +40,7 @@ interface Z80Store {
   resetCPU: () => void;
   clearLog: () => void;
   writeMemory: (address: number, value: number) => void;
+  analyzeCode: () => void;
 }
 
 const DEFAULT_CODE = `; ========================================================
@@ -97,6 +101,7 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
   executionLog: [],
   isRunning: false,
   parseError: null,
+  analysisResult: null,
 
   // Set source code (just updates the text, doesn't parse)
   setSourceCode: (code: string) => {
@@ -302,5 +307,16 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
         },
       ],
     });
+  },
+
+  // Analyze code with AI feedback engine
+  analyzeCode: () => {
+    const { program } = get();
+    if (!program) {
+      set({ analysisResult: { feedbacks: [], score: 0, summary: 'Load program terlebih dahulu sebelum menganalisis.' } });
+      return;
+    }
+    const result = analyzeProgram(program.instructions);
+    set({ analysisResult: result });
   },
 }));

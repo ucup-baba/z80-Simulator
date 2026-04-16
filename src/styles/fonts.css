@@ -33,3 +33,24 @@ body {
   background: var(--selection-bg);
   color: var(--selection-text);
 }
+
+/* Safe area for mobile devices with notches */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Extra small breakpoint for very small phones */
+@media (min-width: 480px) {
+  .xs\:inline { display: inline; }
+}
+
+/* Ensure touch targets are large enough on mobile */
+@media (max-width: 768px) {
+  button { min-height: 36px; }
+}
+
+/* Toast slide-in animation */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
