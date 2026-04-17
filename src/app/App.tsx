@@ -22,6 +22,11 @@ import { CPUDiagram } from '../z80/presentation/CPUDiagram';
 import { ResizablePanel } from '../z80/presentation/ResizablePanel';
 import { AutocompleteDropdown, useAutocomplete } from '../z80/presentation/Autocomplete';
 import { AIFeedbackPanel } from '../z80/presentation/AIFeedbackPanel';
+import { MateriDasarPanel } from '../z80/presentation/MateriDasarPanel';
+import {
+  Code, CircuitBoard, Database, List, Terminal, Eye, Layers, Activity,
+  Cpu, BookOpen, Sparkles, Settings2, Sun, Moon
+} from 'lucide-react';
 
 type TabType = 'assembler' | 'memory-editor' | 'watch' | 'stack' | 'cpu-diagram';
 type MobilePanel = 'code' | 'cpu' | 'memory' | 'log';
@@ -99,6 +104,7 @@ export default function App() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showTools, setShowTools] = useState(false);
   const [showAIFeedback, setShowAIFeedback] = useState(false);
+  const [showMateriDasar, setShowMateriDasar] = useState(false);
 
   // Multi-file tabs
   const [fileTabs, setFileTabs] = useState<FileTab[]>([
@@ -248,19 +254,19 @@ export default function App() {
   const fileTabActive = isDark ? 'bg-zinc-800 text-zinc-100 border-b-2 border-b-blue-500' : 'bg-white text-gray-900 border-b-2 border-b-blue-500';
   const fileTabInactive = isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-gray-400 hover:text-gray-600';
 
-  const mobileNavItems: { id: MobilePanel; icon: string; label: string }[] = [
-    { id: 'code', icon: '⌨', label: 'Code' },
-    { id: 'cpu', icon: '🔲', label: 'CPU' },
-    { id: 'memory', icon: '📝', label: 'Memory' },
-    { id: 'log', icon: '📋', label: 'Log' },
+  const mobileNavItems: { id: MobilePanel; icon: React.ReactNode; label: string }[] = [
+    { id: 'code', icon: <Code className="w-5 h-5" />, label: 'Code' },
+    { id: 'cpu', icon: <CircuitBoard className="w-5 h-5" />, label: 'CPU' },
+    { id: 'memory', icon: <Database className="w-5 h-5" />, label: 'Memory' },
+    { id: 'log', icon: <List className="w-5 h-5" />, label: 'Log' },
   ];
 
-  const desktopTabs: { id: TabType; label: string; shortLabel: string; pcOnly?: boolean }[] = [
-    { id: 'assembler', label: '⌨ Assembler', shortLabel: '⌨ ASM' },
-    { id: 'memory-editor', label: '📝 Memory Editor', shortLabel: '📝 MemEdit' },
-    { id: 'watch', label: '👁 Watch', shortLabel: '👁 Watch' },
-    { id: 'stack', label: '📚 Stack', shortLabel: '📚 Stack' },
-    ...(isEnabled('cpuDiagram') ? [{ id: 'cpu-diagram' as TabType, label: '🔲 CPU Flow', shortLabel: '🔲 CPU', pcOnly: true }] : []),
+  const desktopTabs: { id: TabType; label: React.ReactNode; shortLabel: React.ReactNode; pcOnly?: boolean }[] = [
+    { id: 'assembler', label: <div className="flex items-center gap-1.5"><Terminal className="w-4 h-4" /> <span>Assembler</span></div>, shortLabel: <div className="flex items-center gap-1"><Terminal className="w-3.5 h-3.5"/> <span>ASM</span></div> },
+    { id: 'memory-editor', label: <div className="flex items-center gap-1.5"><Database className="w-4 h-4" /> <span>Memory Editor</span></div>, shortLabel: <div className="flex items-center gap-1"><Database className="w-3.5 h-3.5"/> <span>MemEdit</span></div> },
+    { id: 'watch', label: <div className="flex items-center gap-1.5"><Eye className="w-4 h-4" /> <span>Watch</span></div>, shortLabel: <div className="flex items-center gap-1"><Eye className="w-3.5 h-3.5"/> <span>Watch</span></div> },
+    { id: 'stack', label: <div className="flex items-center gap-1.5"><Layers className="w-4 h-4" /> <span>Stack</span></div>, shortLabel: <div className="flex items-center gap-1"><Layers className="w-3.5 h-3.5"/> <span>Stack</span></div> },
+    ...(isEnabled('cpuDiagram') ? [{ id: 'cpu-diagram' as TabType, label: <div className="flex items-center gap-1.5"><Activity className="w-4 h-4" /> <span>CPU Flow</span></div>, shortLabel: <div className="flex items-center gap-1"><Activity className="w-3.5 h-3.5"/> <span>CPU</span></div>, pcOnly: true }] : []),
   ];
 
   // Left panel content
@@ -270,7 +276,7 @@ export default function App() {
         <>
           {/* Multi-file tab bar */}
           {isEnabled('multiFileTabs') && (
-            <div className={`flex items-center gap-0 px-1 py-1 ${fileTabBg} border-b ${border} overflow-x-auto`}>
+            <div className={`flex-shrink-0 flex items-center gap-0 px-1 py-1 ${fileTabBg} border-b ${border} overflow-x-auto`}>
               {fileTabs.map((f) => (
                 <div
                   key={f.id}
@@ -295,17 +301,40 @@ export default function App() {
               >+</button>
             </div>
           )}
-          <div className={`flex-1 border-b ${panelBorder} relative`}>
-            <CodeEditor
-              value={undoRedo.currentValue}
-              onChange={handleCodeChange}
-              parseError={parseError}
-              breakpoints={breakpoints}
-              onToggleBreakpoint={toggleBreakpoint}
-            />
-          </div>
-          <div className="h-48 lg:h-64">
-            <ExecutionLog entries={executionLog} onClear={clearLog} />
+          <div className={`flex-1 min-h-0 flex flex-col relative`}>
+            {(program !== null || executionLog.length > 0) ? (
+              <ResizablePanel
+                direction="vertical"
+                initialRatio={0.7}
+                enabled={isEnabled('resizablePanels')}
+                left={
+                  <div className="h-full w-full relative">
+                    <CodeEditor
+                      value={undoRedo.currentValue}
+                      onChange={handleCodeChange}
+                      parseError={parseError}
+                      breakpoints={breakpoints}
+                      onToggleBreakpoint={toggleBreakpoint}
+                    />
+                  </div>
+                }
+                right={
+                  <div className={`h-full w-full flex flex-col min-h-0 border-t ${panelBorder}`}>
+                    <ExecutionLog entries={executionLog} onClear={clearLog} />
+                  </div>
+                }
+              />
+            ) : (
+              <div className="flex-1 w-full relative min-h-0">
+                <CodeEditor
+                  value={undoRedo.currentValue}
+                  onChange={handleCodeChange}
+                  parseError={parseError}
+                  breakpoints={breakpoints}
+                  onToggleBreakpoint={toggleBreakpoint}
+                />
+              </div>
+            )}
           </div>
         </>
       );
@@ -323,9 +352,11 @@ export default function App() {
       <div className={`flex-1 border-b ${panelBorder} overflow-y-auto`}>
         <RegisterDashboard registers={cpu.registers} halted={cpu.halted} error={cpu.error} performance={cpu.performance} lastInstruction={cpu.lastInstruction} />
       </div>
-      <div className="h-48 lg:h-64 overflow-hidden">
-        <MemoryViewer memory={cpu.memory} pc={cpu.registers.registers16.PC} sp={cpu.registers.registers16.SP} displayRows={16} />
-      </div>
+      {isEnabled('memoryViewer') && (
+        <div className="h-48 lg:h-64 overflow-hidden">
+          <MemoryViewer memory={cpu.memory} pc={cpu.registers.registers16.PC} sp={cpu.registers.registers16.SP} displayRows={16} />
+        </div>
+      )}
     </div>
   );
 
@@ -353,9 +384,7 @@ export default function App() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
-              <svg className="w-4 h-4 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-              </svg>
+              <Cpu className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
             </div>
             <div className="min-w-0">
               <h1 className="text-sm sm:text-lg font-bold tracking-tight truncate" style={{ fontFamily: 'var(--font-sans)' }}>Z-80 CPU Simulator</h1>
@@ -378,33 +407,35 @@ export default function App() {
 
           <div className="flex items-center gap-1.5 sm:gap-2 text-sm flex-shrink-0">
             <div className="hidden md:flex items-center gap-2">
-              <div className={`px-3 py-1.5 ${badgeBg} rounded-lg border`}>
+              <div className={`px-3 py-1.5 ${badgeBg} rounded-lg border flex items-center`}>
                 <span className={subtext}>PC:</span>
                 <span className="ml-2 font-mono font-semibold text-blue-400" style={{ fontFamily: 'var(--font-mono)' }}>{cpu.registers.registers16.PC.toString(16).toUpperCase().padStart(4, '0')}H</span>
               </div>
-              <div className={`px-3 py-1.5 ${badgeBg} rounded-lg border`}>
+              <div className={`px-3 py-1.5 ${badgeBg} rounded-lg border flex items-center`}>
                 <span className={subtext}>Inst:</span>
                 <span className="ml-2 font-semibold text-emerald-400">{cpu.performance.instructionsExecuted}</span>
               </div>
             </div>
 
+            {/* Materi Dasar button */}
+            <button onClick={() => setShowMateriDasar(true)}
+              className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-blue-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-blue-600 border border-gray-200'}`}
+              title="Materi Dasar Z-80">
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+
             {/* AI Review button */}
             <button onClick={() => setShowAIFeedback(true)}
               className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-purple-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-purple-600 border border-gray-200'}`}
               title="AI Code Review">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
             {/* Tools button */}
             <button onClick={() => setShowTools(true)}
               className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-amber-600 border border-gray-200'}`}
               title="Tools & Features">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+              <Settings2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
             {/* Theme toggle */}
@@ -412,12 +443,13 @@ export default function App() {
               className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-yellow-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-indigo-500 border border-gray-200'}`}
               title={`Switch to ${isDark ? 'light' : 'dark'} mode`}>
               {isDark ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <Sun className="w-4 h-4 sm:w-5 sm:h-5" />
               ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                <Moon className="w-4 h-4 sm:w-5 sm:h-5" />
               )}
             </button>
           </div>
+
         </div>
       </header>
 
@@ -457,8 +489,12 @@ export default function App() {
             </div>
           )}
           {mobilePanel === 'memory' && (
-            <div className="h-full overflow-hidden">
-              <MemoryViewer memory={cpu.memory} pc={cpu.registers.registers16.PC} sp={cpu.registers.registers16.SP} displayRows={16} />
+            <div className="h-full overflow-hidden flex flex-col items-center justify-center">
+              {isEnabled('memoryViewer') ? (
+                <MemoryViewer memory={cpu.memory} pc={cpu.registers.registers16.PC} sp={cpu.registers.registers16.SP} displayRows={16} />
+              ) : (
+                <p className={`text-sm ${subtext}`}>Memory Viewer is hidden. Enable in Tools & Features.</p>
+              )}
             </div>
           )}
           {mobilePanel === 'log' && (
@@ -503,6 +539,10 @@ export default function App() {
         onAnalyze={analyzeCode}
         hasProgram={program !== null}
         sourceCode={store.sourceCode}
+      />
+      <MateriDasarPanel 
+        isOpen={showMateriDasar} 
+        onClose={() => setShowMateriDasar(false)} 
       />
 
       {/* ─── Autocomplete Dropdown (PC only) ─── */}

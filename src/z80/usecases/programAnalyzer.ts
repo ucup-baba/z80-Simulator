@@ -464,6 +464,104 @@ function checkRegisterModified(instructions: Instruction[], start: number, end: 
   return false;
 }
 
+/**
+ * Rule 8: Hardware Compatibility
+ * Detects grammatically incorrect combinations (like IN HL) that parser bypasses
+ */
+function checkHardwareCompatibility(instructions: Instruction[]): AnalysisFeedback[] {
+  const results: AnalysisFeedback[] = [];
+
+  for (let i = 0; i < instructions.length; i++) {
+    const inst = instructions[i];
+    const { mnemonic, operand1: o1, operand2: o2 } = inst;
+
+    // Check IN
+    if (mnemonic === 'IN') {
+      const validDirect = o1?.type === 'register8' && o1.value === 'A' && o2?.type === 'indirectAddress';
+      const validIndirect = o1?.type === 'register8' && o2?.type === 'portRegister';
+      if (!validDirect && !validIndirect) {
+        results.push(makeFeedback(
+          'error', 'best-practice', i + 1,
+          '❌ Syntax Perangkat Keras Ilegal',
+          `Z-80 tidak mendukung '${inst.sourceCode.trim()}'. Instruksi IN hanya mendukung IN A, (n) atau IN r, (C).`,
+          'Sesuaikan operan dengan arsitektur Z-80 yang asli.'
+        ));
+      }
+    }
+
+    // Check OUT
+    if (mnemonic === 'OUT') {
+      const validDirect = o1?.type === 'indirectAddress' && o2?.type === 'register8' && o2.value === 'A';
+      const validIndirect = o1?.type === 'portRegister' && o2?.type === 'register8';
+      if (!validDirect && !validIndirect) {
+        results.push(makeFeedback(
+          'error', 'best-practice', i + 1,
+          '❌ Syntax Perangkat Keras Ilegal',
+          `Z-80 tidak mendukung '${inst.sourceCode.trim()}'. Instruksi OUT hanya mendukung OUT (n), A atau OUT (C), r.`,
+          'Sesuaikan operan dengan arsitektur instruksi fisik.'
+        ));
+      }
+    }
+
+    // Check 16-bit generic invalid additions (e.g. ADD A, HL)
+    if (['ADD', 'SUB', 'ADC', 'SBC', 'AND', 'OR', 'XOR', 'CP'].includes(mnemonic)) {
+      if (mnemonic === 'ADD' || mnemonic === 'ADC' || mnemonic === 'SBC') {
+        if (o1?.type === 'register8' && o1.value === 'A' && (o2?.type === 'register16' || o2?.type === 'registerPair' || o2?.type === 'indexRegister')) {
+           results.push(makeFeedback('error', 'best-practice', i + 1, '❌ Ketidakcocokan Tipe Data', `Penambahan 16-bit ke register 8-bit (A) tidak diizinkan! Fisik ALU Z-80 untuk A hanya 8-bit.`, 'Gunakan operasi aritmatika 8-bit yang sesuai.'));
+        }
+      }
+    }
+
+    // Check PUSH and POP
+    if (mnemonic === 'PUSH' || mnemonic === 'POP') {
+      // Must be a 16-bit register pair or index register
+      if (o1 && o1.type !== 'registerPair' && o1.type !== 'indexRegister') {
+        results.push(makeFeedback(
+          'error', 'best-practice', i + 1,
+          '❌ Ukuran Stack Ilegal',
+          `Instruksi ${mnemonic} hanya mendukung register ganda 16-bit (AF, BC, DE, HL, IX, IY). Tidak ada sirkuit untuk menaruh register 8-bit secara terpisah ke dalam Stack.`,
+          'Ganti operan dengan pasangan registernya (misal: PUSH AF, jangan PUSH A).'
+        ));
+      }
+    }
+
+    // Check EX (Exchange) limitations
+    if (mnemonic === 'EX') {
+      const isDeHl = o1?.type === 'registerPair' && o1.value === 'DE' && o2?.type === 'registerPair' && o2.value === 'HL';
+      const isAfAf = o1?.type === 'registerPair' && o1.value === 'AF' && o2?.type === 'registerPair' && o2.value === 'AF';
+      const isSpHl = o1?.type === 'indirectSP' && o2?.type === 'registerPair' && o2.value === 'HL';
+      const isSpIxIy = o1?.type === 'indirectSP' && o2?.type === 'indexRegister';
+
+      if (!isDeHl && !isAfAf && !isSpHl && !isSpIxIy) {
+        results.push(makeFeedback(
+          'error', 'best-practice', i + 1,
+          '❌ Kombinasi Exchange Tertutup',
+          `Sirkuit instruksi EX sangat kaku. '${inst.sourceCode.trim()}' tidak diizinkan. Z-80 hanya menyediakan rute EX DE, HL | EX AF, AF' | EX (SP), HL/IX/IY.`,
+          'Gunakan bantuan register sementara untuk menukar data register yang tidak difasilitasi EX.'
+        ));
+      }
+    }
+
+    // Check Memory-to-Memory Transfer via LD
+    if (mnemonic === 'LD') {
+      const isOp1Memory = o1?.type === 'indirect' || o1?.type === 'indirectAddress' || o1?.type === 'indexedIX' || o1?.type === 'indexedIY';
+      const isOp2Memory = o2?.type === 'indirect' || o2?.type === 'indirectAddress' || o2?.type === 'indexedIX' || o2?.type === 'indexedIY';
+      
+      if (isOp1Memory && isOp2Memory) {
+        results.push(makeFeedback(
+          'error', 'best-practice', i + 1,
+          '❌ Memori-ke-Memori (Ilegal)',
+          `Transfer data dari alamat memori langsung ke alamat memori lain (misalnya LD (HL), (DE)) mustahil dilakukan dalam 1 siklus CPU Z-80.`,
+          'Transit/parkirkan data ke register A terlebih dahulu (LD A, (DE) -> LD (HL), A).'
+        ));
+      }
+    }
+
+  }
+
+  return results;
+}
+
 // ─── Main Analyzer ──────────────────────────────────────────────────
 
 /**
@@ -488,6 +586,7 @@ export function analyzeProgram(instructions: Instruction[]): AnalysisResult {
     ...checkEfficiency(instructions),
     ...checkFlagAwareness(instructions),
     ...checkBestPractices(instructions),
+    ...checkHardwareCompatibility(instructions),
   ];
 
   // Calculate quality score
@@ -504,7 +603,7 @@ export function analyzeProgram(instructions: Instruction[]): AnalysisResult {
   // Generate summary
   let summary: string;
   if (allFeedbacks.length === 0) {
-    summary = '✅ Program terlihat baik! Tidak ditemukan masalah logika.';
+    summary = '✅ Program terlihat baik! Tidak ditemukan masalah logika atau sintaks.';
     score = 100;
   } else if (errorCount > 0) {
     summary = `🔴 Ditemukan ${errorCount} error kritis${warningCount ? `, ${warningCount} peringatan` : ''}. Perlu perbaikan segera.`;

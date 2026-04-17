@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { useTheme } from './ThemeContext';
 import type { AnalysisFeedback, AnalysisResult, FeedbackSeverity, FeedbackCategory } from '../usecases/programAnalyzer';
 import { deepAnalyzeZ80Code } from '../usecases/geminiAnalyzer';
+import { Bot, Search, Lightbulb, FileText, CheckCircle2, Activity, Repeat, Trash2, Package, RefreshCw, Sparkles, Hourglass, Flag, Zap, PartyPopper } from 'lucide-react';
 
 interface AIFeedbackPanelProps {
   isOpen: boolean;
@@ -24,14 +25,14 @@ const SEVERITY_META: Record<FeedbackSeverity, { color: string; darkColor: string
   tip:     { color: 'text-emerald-600', darkColor: 'text-emerald-400', bg: 'bg-emerald-50 border-emerald-200', darkBg: 'bg-emerald-950/30 border-emerald-800/50', label: 'Tips' },
 };
 
-const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
-  'infinite-loop': '🔄 Infinite Loop',
-  'register-misuse': '📝 Register',
-  'dead-code': '⚪ Dead Code',
-  'stack-issue': '📦 Stack',
-  'efficiency': '⚡ Efisiensi',
-  'flag-awareness': '🏳️ Flags',
-  'best-practice': '✅ Best Practice',
+const CATEGORY_LABELS: Record<FeedbackCategory, React.ReactNode> = {
+  'infinite-loop': <><Repeat className="w-3.5 h-3.5 inline mr-1" /> Infinite Loop</>,
+  'register-misuse': <><FileText className="w-3.5 h-3.5 inline mr-1" /> Register</>,
+  'dead-code': <><Trash2 className="w-3.5 h-3.5 inline mr-1" /> Dead Code</>,
+  'stack-issue': <><Package className="w-3.5 h-3.5 inline mr-1" /> Stack</>,
+  'efficiency': <><Zap className="w-3.5 h-3.5 inline mr-1" /> Efisiensi</>,
+  'flag-awareness': <><Flag className="w-3.5 h-3.5 inline mr-1" /> Flags</>,
+  'best-practice': <><CheckCircle2 className="w-3.5 h-3.5 inline mr-1" /> Best Practice</>,
 };
 
 function ScoreGauge({ score, isDark }: { score: number; isDark: boolean }) {
@@ -86,7 +87,7 @@ function FeedbackItem({ feedback, isDark }: { feedback: AnalysisFeedback; isDark
               </p>
               {feedback.suggestion && (
                 <div className={`flex items-start gap-2 text-xs px-3 py-2 rounded-lg ${isDark ? 'bg-zinc-900/80 text-emerald-400' : 'bg-white text-emerald-700'}`}>
-                  <span className="flex-shrink-0 mt-0.5">💡</span>
+                  <span className="flex-shrink-0 mt-0.5"><Lightbulb className="w-3.5 h-3.5" /></span>
                   <span>{feedback.suggestion}</span>
                 </div>
               )}
@@ -153,7 +154,7 @@ export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
           <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-                <span className="text-white text-sm">🤖</span>
+                <Bot className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h2 className={`text-lg font-bold ${text}`} style={{ fontFamily: 'var(--font-sans)' }}>
@@ -179,7 +180,7 @@ export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
             // No analysis yet
             <div className="flex flex-col items-center justify-center py-12 px-6">
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-zinc-800' : 'bg-gray-100'}`}>
-                <span className="text-3xl">🔍</span>
+                <Search className="w-8 h-8 text-purple-500" />
               </div>
               <p className={`text-center ${subtext} text-sm mb-4`}>
                 {hasProgram
@@ -196,7 +197,7 @@ export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
                     : isDark ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }`}
               >
-                🔍 Analisis Kode
+                <div className="flex items-center justify-center gap-2"><Search className="w-4 h-4" /> Analisis Kode</div>
               </button>
             </div>
           ) : (
@@ -221,7 +222,7 @@ export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
                   onClick={onAnalyze}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
                 >
-                  🔄 Linter Ulang
+                  <div className="flex items-center justify-center gap-2"><RefreshCw className="w-4 h-4" /> Linter Ulang</div>
                 </button>
                 <button
                   onClick={handleDeepScan}
@@ -232,7 +233,9 @@ export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
                       : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-md'
                   }`}
                 >
-                  {isDeepScanning ? '⏳ Menganalisis...' : '✨ Deep Scan (AI)'}
+                  <div className="flex items-center justify-center gap-2">
+                    {isDeepScanning ? <><Hourglass className="w-4 h-4 animate-spin" /> Menganalisis...</> : <><Sparkles className="w-4 h-4" /> Deep Scan (AI)</>}
+                  </div>
                 </button>
               </div>
 
@@ -240,7 +243,7 @@ export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
               {geminiResponse && (
                 <div className={`mt-4 p-4 rounded-xl border ${isDark ? 'bg-purple-950/20 border-purple-800/50 text-zinc-200' : 'bg-purple-50 border-purple-200 text-gray-800'}`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xl">✨</span>
+                    <Sparkles className="w-5 h-5 text-purple-400" />
                     <h3 className="font-bold text-sm">Saran Mentor AI:</h3>
                   </div>
                   <div className="text-sm whitespace-pre-wrap leading-relaxed font-mono">
@@ -252,12 +255,12 @@ export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
               {/* Feedback list */}
               {analysisResult.feedbacks.length === 0 ? (
                 <div className="text-center py-8">
-                  <span className="text-4xl">🎉</span>
+                  <PartyPopper className={`w-12 h-12 mx-auto mb-2 ${isDark ? 'text-emerald-500' : 'text-emerald-500'}`} />
                   <p className={`mt-2 text-sm ${isDark ? 'text-emerald-400' : 'text-emerald-600'} font-medium`}>
                     Program Sempurna!
                   </p>
-                  <p className={`text-xs ${subtext} mt-1`}>
-                    Tidak ditemukan masalah logika. Kerja bagus! 👏
+                  <p className={`text-xs ${subtext} mt-1 flex items-center justify-center gap-1`}>
+                    Tidak ditemukan masalah logika. Kerja bagus! <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                   </p>
                 </div>
               ) : (

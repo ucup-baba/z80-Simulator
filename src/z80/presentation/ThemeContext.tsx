@@ -24,7 +24,7 @@ export const useTheme = () => useContext(ThemeContext);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('z80-theme');
-    return (saved as Theme) || 'dark';
+    return (saved as Theme) || 'light';
   });
 
   const isDark = theme === 'dark';

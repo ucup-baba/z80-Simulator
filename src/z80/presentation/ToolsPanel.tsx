@@ -6,19 +6,21 @@
 import React from 'react';
 import { useTheme } from './ThemeContext';
 import { useFeatureFlags, type FeatureFlags } from './FeatureToggleContext';
+import { Lightbulb, Cpu, MoveHorizontal, Bell, FileText, Undo, Brain, Settings2, X } from 'lucide-react';
 
 interface ToolsPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const FEATURE_META: Record<keyof FeatureFlags, { label: string; icon: string; desc: string; pcOnly: boolean }> = {
-  autocomplete: { label: 'Auto-Complete', icon: '💡', desc: 'IntelliSense for Z-80 mnemonics', pcOnly: true },
-  cpuDiagram: { label: 'CPU Diagram', icon: '🔲', desc: 'Animated data flow visualization', pcOnly: true },
-  resizablePanels: { label: 'Resizable Panels', icon: '↔️', desc: 'Drag to resize panel borders', pcOnly: true },
-  toastNotifications: { label: 'Toast Notifications', icon: '🔔', desc: 'Popup alerts for actions', pcOnly: false },
-  multiFileTabs: { label: 'Multi-File Tabs', icon: '📑', desc: 'Open multiple .asm files', pcOnly: false },
-  undoRedo: { label: 'Undo / Redo', icon: '↩️', desc: 'Editor history (Ctrl+Z/Y)', pcOnly: false },
+const FEATURE_META: Record<keyof FeatureFlags, { label: string; icon: React.ReactNode; desc: string; pcOnly: boolean }> = {
+  autocomplete: { label: 'Auto-Complete', icon: <Lightbulb className="w-5 h-5 text-amber-500" />, desc: 'IntelliSense for Z-80 mnemonics', pcOnly: true },
+  cpuDiagram: { label: 'CPU Diagram', icon: <Cpu className="w-5 h-5 text-blue-500" />, desc: 'Animated data flow visualization', pcOnly: true },
+  resizablePanels: { label: 'Resizable Panels', icon: <MoveHorizontal className="w-5 h-5 text-emerald-500" />, desc: 'Drag to resize panel borders', pcOnly: true },
+  toastNotifications: { label: 'Toast Notifications', icon: <Bell className="w-5 h-5 text-yellow-500" />, desc: 'Popup alerts for actions', pcOnly: false },
+  multiFileTabs: { label: 'Multi-File Tabs', icon: <FileText className="w-5 h-5 text-indigo-500" />, desc: 'Open multiple .asm files', pcOnly: false },
+  undoRedo: { label: 'Undo / Redo', icon: <Undo className="w-5 h-5 text-rose-500" />, desc: 'Editor history (Ctrl+Z/Y)', pcOnly: false },
+  memoryViewer: { label: 'Memory Viewer', icon: <Brain className="w-5 h-5 text-purple-500" />, desc: 'Show memory state in real-time', pcOnly: false },
 };
 
 export const ToolsPanel: React.FC<ToolsPanelProps> = ({ isOpen, onClose }) => {
@@ -45,7 +47,7 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({ isOpen, onClose }) => {
         <div className={`flex items-center justify-between px-5 py-4 border-b ${divider}`}>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center">
-              <span className="text-white text-sm">⚙</span>
+              <Settings2 className="w-5 h-5 text-white" />
             </div>
             <h2 className={`text-lg font-semibold ${text}`} style={{ fontFamily: 'var(--font-sans)' }}>
               Tools & Features
@@ -55,9 +57,7 @@ export const ToolsPanel: React.FC<ToolsPanelProps> = ({ isOpen, onClose }) => {
             onClick={onClose}
             className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-zinc-800 text-zinc-400' : 'hover:bg-gray-100 text-gray-400'}`}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         </div>
 

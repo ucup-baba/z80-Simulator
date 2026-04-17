@@ -2,8 +2,7 @@ import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-
-
+import { VitePWA } from 'vite-plugin-pwa'
 function figmaAssetResolver() {
   return {
     name: 'figma-asset-resolver',
@@ -23,6 +22,26 @@ export default defineConfig({
     // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['pwa-icon.svg'],
+      manifest: {
+        name: 'Z-80 Simulator',
+        short_name: 'Z80 Sim',
+        description: 'Z-80 Assembly Simulator',
+        theme_color: '#18181b',
+        background_color: '#18181b',
+        display: 'standalone',
+        icons: [
+          {
+            src: 'pwa-icon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
+          }
+        ]
+      }
+    })
   ],
   resolve: {
     alias: {

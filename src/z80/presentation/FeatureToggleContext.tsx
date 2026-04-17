@@ -12,6 +12,7 @@ export interface FeatureFlags {
   toastNotifications: boolean;
   multiFileTabs: boolean;
   undoRedo: boolean;
+  memoryViewer: boolean;
 }
 
 const DEFAULT_FLAGS: FeatureFlags = {
@@ -21,6 +22,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   toastNotifications: true,
   multiFileTabs: true,
   undoRedo: true,
+  memoryViewer: false,
 };
 
 interface FeatureToggleContextValue {

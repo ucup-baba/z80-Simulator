@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { useTheme } from './ThemeContext';
+import { Layers } from 'lucide-react';
 
 interface StackViewerProps {
   memory: { bytes: Uint8Array; size: number };
@@ -54,7 +55,7 @@ export const StackViewer: React.FC<StackViewerProps> = ({ memory, sp, pc }) => {
         {isEmpty ? (
           <div className={`flex items-center justify-center h-full ${subtext}`}>
             <div className="text-center">
-              <div className="text-3xl mb-2 opacity-30">📚</div>
+              <Layers className="w-8 h-8 mb-2 opacity-30 mx-auto" />
               <p className="text-sm">Stack is empty</p>
               <p className="text-xs mt-1">SP = {sp.toString(16).toUpperCase().padStart(4, '0')}H</p>
             </div>

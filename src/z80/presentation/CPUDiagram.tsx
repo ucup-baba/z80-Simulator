@@ -8,7 +8,7 @@ import { useTheme } from './ThemeContext';
 
 interface CPUDiagramProps {
   registers: any;
-  lastInstruction?: string | null;
+  lastInstruction?: { source: string; output: string } | string | null;
   halted: boolean;
   isRunning: boolean;
 }
@@ -50,7 +50,8 @@ export const CPUDiagram: React.FC<CPUDiagramProps> = ({ registers, lastInstructi
   const lineActive = 'bg-blue-400';
 
   // Determine which registers are "active" based on last instruction
-  const inst = (lastInstruction || '').toUpperCase();
+  const instStr = typeof lastInstruction === 'string' ? lastInstruction : (lastInstruction?.source || '');
+  const inst = instStr.toUpperCase();
   const isActive = (reg: string) => inst.includes(reg);
 
   const blueHL = 'border-blue-400/50 bg-blue-500/10';
@@ -121,7 +122,7 @@ export const CPUDiagram: React.FC<CPUDiagramProps> = ({ registers, lastInstructi
           <div className={`mt-4 px-3 py-2 rounded-lg text-center ${isDark ? 'bg-zinc-800 border border-zinc-700' : 'bg-gray-50 border border-gray-200'}`}>
             <span className={`text-xs ${subtext}`}>Last Instruction</span>
             <div className={`text-sm font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`} style={{ fontFamily: 'var(--font-mono)' }}>
-              {lastInstruction}
+              {instStr}
             </div>
           </div>
         )}
