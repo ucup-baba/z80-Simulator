@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useTheme } from './ThemeContext';
 import type { AnalysisFeedback, AnalysisResult, FeedbackSeverity, FeedbackCategory } from '../usecases/programAnalyzer';
+import { deepAnalyzeZ80Code } from '../usecases/geminiAnalyzer';
 
 interface AIFeedbackPanelProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface AIFeedbackPanelProps {
   analysisResult: AnalysisResult | null;
   onAnalyze: () => void;
   hasProgram: boolean;
+  sourceCode: string;
 }
 
 const SEVERITY_META: Record<FeedbackSeverity, { color: string; darkColor: string; bg: string; darkBg: string; label: string }> = {
@@ -111,11 +113,22 @@ function FeedbackItem({ feedback, isDark }: { feedback: AnalysisFeedback; isDark
 }
 
 export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
-  isOpen, onClose, analysisResult, onAnalyze, hasProgram,
+  isOpen, onClose, analysisResult, onAnalyze, hasProgram, sourceCode,
 }) => {
   const { isDark } = useTheme();
 
+  const [isDeepScanning, setIsDeepScanning] = useState(false);
+  const [geminiResponse, setGeminiResponse] = useState<string | null>(null);
+
   if (!isOpen) return null;
+
+  const handleDeepScan = async () => {
+    setIsDeepScanning(true);
+    setGeminiResponse(null);
+    const result = await deepAnalyzeZ80Code(sourceCode, analysisResult?.feedbacks || []);
+    setGeminiResponse(result.markdown);
+    setIsDeepScanning(false);
+  };
 
   const overlayBg = 'bg-black/50 backdrop-blur-sm';
   const panelBg = isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-gray-200';
@@ -202,13 +215,39 @@ export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
                 </div>
               </div>
 
-              {/* Re-analyze button */}
-              <button
-                onClick={onAnalyze}
-                className={`w-full py-2 rounded-lg text-sm font-medium transition-all ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
-              >
-                🔄 Analisis Ulang
-              </button>
+              {/* Controls */}
+              <div className="flex gap-2">
+                <button
+                  onClick={onAnalyze}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                >
+                  🔄 Linter Ulang
+                </button>
+                <button
+                  onClick={handleDeepScan}
+                  disabled={isDeepScanning}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                    isDeepScanning 
+                      ? 'bg-purple-500/50 cursor-not-allowed text-white' 
+                      : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-md'
+                  }`}
+                >
+                  {isDeepScanning ? '⏳ Menganalisis...' : '✨ Deep Scan (AI)'}
+                </button>
+              </div>
+
+              {/* Gemini Response Area */}
+              {geminiResponse && (
+                <div className={`mt-4 p-4 rounded-xl border ${isDark ? 'bg-purple-950/20 border-purple-800/50 text-zinc-200' : 'bg-purple-50 border-purple-200 text-gray-800'}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xl">✨</span>
+                    <h3 className="font-bold text-sm">Saran Mentor AI:</h3>
+                  </div>
+                  <div className="text-sm whitespace-pre-wrap leading-relaxed font-mono">
+                    {geminiResponse}
+                  </div>
+                </div>
+              )}
 
               {/* Feedback list */}
               {analysisResult.feedbacks.length === 0 ? (

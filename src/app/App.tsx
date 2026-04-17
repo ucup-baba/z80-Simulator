@@ -502,6 +502,7 @@ export default function App() {
         analysisResult={analysisResult}
         onAnalyze={analyzeCode}
         hasProgram={program !== null}
+        sourceCode={store.sourceCode}
       />
 
       {/* ─── Autocomplete Dropdown (PC only) ─── */}
