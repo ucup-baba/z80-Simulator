@@ -23,6 +23,7 @@ import { ResizablePanel } from '../z80/presentation/ResizablePanel';
 import { AutocompleteDropdown, useAutocomplete } from '../z80/presentation/Autocomplete';
 import { AIFeedbackPanel } from '../z80/presentation/AIFeedbackPanel';
 import { MateriDasarPanel } from '../z80/presentation/MateriDasarPanel';
+import { PwaInstallPrompt } from '../z80/presentation/PwaInstallPrompt';
 import {
   Code, CircuitBoard, Database, List, Terminal, Eye, Layers, Activity,
   Cpu, BookOpen, Sparkles, Settings2, Sun, Moon
@@ -563,6 +564,9 @@ export default function App() {
           }}
         />
       )}
+
+      {/* ─── PWA Install Banner ─── */}
+      <PwaInstallPrompt />
     </div>
   );
 }
