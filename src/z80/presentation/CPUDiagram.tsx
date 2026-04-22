@@ -73,10 +73,15 @@ export const CPUDiagram: React.FC<CPUDiagramProps> = ({ registers, lastInstructi
           <div className={`px-4 py-2 rounded-xl border-2 ${isActive('A') ? 'border-amber-400 bg-amber-500/10' : isDark ? 'border-zinc-600 bg-zinc-800' : 'border-gray-300 bg-gray-100'} transition-all duration-300`}>
             <span className={`text-xs ${subtext}`}>ALU / Accumulator</span>
             <div className={`text-center text-xl font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`} style={{ fontFamily: 'var(--font-mono)' }}>
-              A = {hex8(registers.registers8.A)}
+              A = {hex8(registers.registers8.A || 0)}
             </div>
             <div className={`text-center text-xs ${subtext}`}>
-              Flags: {hex8(registers.registers8.F)}
+              Flags: {hex8(
+                (registers.flags?.S ? 0x80 : 0) | (registers.flags?.Z ? 0x40 : 0) |
+                (registers.flags?.Y ? 0x20 : 0) | (registers.flags?.H ? 0x10 : 0) |
+                (registers.flags?.X ? 0x08 : 0) | (registers.flags?.P ? 0x04 : 0) |
+                (registers.flags?.N ? 0x02 : 0) | (registers.flags?.C ? 0x01 : 0)
+              )}
             </div>
           </div>
           {/* Data bus line */}

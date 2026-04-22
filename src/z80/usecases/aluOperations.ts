@@ -469,9 +469,9 @@ export function aluAdcHL(hl: number, rr: number, carryIn: boolean): ALUResult16 
   const result = hl + rr + c;
   const wordResult = toWord(result);
   const carry = result > 0xFFFF;
-  const halfCarry = ((hl & 0x0FFF) + (rr & 0x0FFF) + c) > 0x0FFF;
+  const halfCarry = ((hl ^ rr ^ wordResult) & 0x1000) !== 0;
   // Overflow: both same sign, result different sign (16-bit signed)
-  const overflow = ((hl ^ rr ^ 0x8000) & (hl ^ result) & 0x8000) !== 0;
+  const overflow = ((hl ^ rr ^ 0x8000) & (hl ^ wordResult) & 0x8000) !== 0;
 
   return {
     result: wordResult,
@@ -496,8 +496,8 @@ export function aluSbcHL(hl: number, rr: number, carryIn: boolean): ALUResult16 
   const result = hl - rr - c;
   const wordResult = toWord(result);
   const carry = result < 0;
-  const halfCarry = (hl & 0x0FFF) < (rr & 0x0FFF) + c;
-  const overflow = ((hl ^ rr) & (hl ^ result) & 0x8000) !== 0;
+  const halfCarry = ((hl ^ rr ^ wordResult) & 0x1000) !== 0;
+  const overflow = ((hl ^ rr) & (hl ^ wordResult) & 0x8000) !== 0;
 
   return {
     result: wordResult,

@@ -26,8 +26,11 @@ import { MateriDasarPanel } from '../z80/presentation/MateriDasarPanel';
 import { PwaInstallPrompt } from '../z80/presentation/PwaInstallPrompt';
 import {
   Code, CircuitBoard, Database, List, Terminal, Eye, Layers, Activity,
-  Cpu, BookOpen, Sparkles, Settings2, Sun, Moon
+  Cpu, BookOpen, Sparkles, Settings2, Sun, Moon, LogIn, LogOut, MoreVertical
 } from 'lucide-react';
+import { useAuthStore } from '../z80/adapters/useAuthStore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase';
 
 type TabType = 'assembler' | 'memory-editor' | 'watch' | 'stack' | 'cpu-diagram';
 type MobilePanel = 'code' | 'cpu' | 'memory' | 'log';
@@ -97,6 +100,7 @@ export default function App() {
   const { isDark, toggleTheme } = useTheme();
   const { isEnabled } = useFeatureFlags();
   const { addToast } = useToast();
+  const { user, loginWithGoogle, logout } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('assembler');
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('code');
@@ -106,15 +110,98 @@ export default function App() {
   const [showTools, setShowTools] = useState(false);
   const [showAIFeedback, setShowAIFeedback] = useState(false);
   const [showMateriDasar, setShowMateriDasar] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setShowMobileMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Multi-file tabs
-  const [fileTabs, setFileTabs] = useState<FileTab[]>([
-    { id: 'main', name: 'program.asm', content: store.sourceCode },
-  ]);
-  const [activeFileId, setActiveFileId] = useState('main');
+  const [fileTabs, setFileTabs] = useState<FileTab[]>(() => {
+    try {
+      const stored = localStorage.getItem('z80-file-tabs');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [{ id: 'main', name: 'program.asm', content: store.sourceCode }];
+  });
+  
+  const [activeFileId, setActiveFileId] = useState<string>(() => {
+    return localStorage.getItem('z80-active-file') || 'main';
+  });
 
   // Undo/Redo
-  const undoRedo = useUndoRedo(store.sourceCode, isEnabled('undoRedo'));
+  const undoRedo = useUndoRedo(
+    fileTabs.find(f => f.id === activeFileId)?.content || store.sourceCode, 
+    isEnabled('undoRedo')
+  );
+
+  // Save changes to localStorage automatically
+  useEffect(() => {
+    localStorage.setItem('z80-file-tabs', JSON.stringify(fileTabs));
+  }, [fileTabs]);
+
+  useEffect(() => {
+    localStorage.setItem('z80-active-file', activeFileId);
+  }, [activeFileId]);
+
+  // Sync initial state to store on mount
+  useEffect(() => {
+    const activeTab = fileTabs.find(f => f.id === activeFileId);
+    if (activeTab) {
+      store.setSourceCode(activeTab.content);
+    }
+  }, []); // Run only on mount
+
+  // Cloud Sync: Download & Upload
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  
+  useEffect(() => {
+    if (user) {
+      setIsCloudSyncing(true);
+      const docRef = doc(db, 'users', user.uid);
+      getDoc(docRef).then(snap => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.fileTabs) {
+            setFileTabs(data.fileTabs);
+            if (data.activeFileId) setActiveFileId(data.activeFileId);
+            
+            const activeTab = data.fileTabs.find((f: FileTab) => f.id === (data.activeFileId || activeFileId));
+            if (activeTab) {
+              store.setSourceCode(activeTab.content);
+              undoRedo.setValue(activeTab.content);
+            }
+          }
+        }
+        setIsCloudSyncing(false);
+      }).catch(err => {
+        console.error("Cloud Sync Download Error", err);
+        setIsCloudSyncing(false);
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user && !isCloudSyncing) {
+      const timer = setTimeout(() => {
+        const docRef = doc(db, 'users', user.uid);
+        setDoc(docRef, {
+          fileTabs,
+          activeFileId,
+          updatedAt: serverTimestamp()
+        }, { merge: true }).catch(err => console.error("Cloud Sync Upload Error", err));
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [fileTabs, activeFileId, user, isCloudSyncing]);
 
   // Sync undo/redo value → store
   const handleCodeChange = useCallback((code: string) => {
@@ -258,16 +345,16 @@ export default function App() {
   const mobileNavItems: { id: MobilePanel; icon: React.ReactNode; label: string }[] = [
     { id: 'code', icon: <Code className="w-5 h-5" />, label: 'Code' },
     { id: 'cpu', icon: <CircuitBoard className="w-5 h-5" />, label: 'CPU' },
-    { id: 'memory', icon: <Database className="w-5 h-5" />, label: 'Memory' },
+    ...(isEnabled('memoryViewer') ? [{ id: 'memory' as MobilePanel, icon: <Database className="w-5 h-5" />, label: 'Memory' }] : []),
     { id: 'log', icon: <List className="w-5 h-5" />, label: 'Log' },
   ];
 
   const desktopTabs: { id: TabType; label: React.ReactNode; shortLabel: React.ReactNode; pcOnly?: boolean }[] = [
-    { id: 'assembler', label: <div className="flex items-center gap-1.5"><Terminal className="w-4 h-4" /> <span>Assembler</span></div>, shortLabel: <div className="flex items-center gap-1"><Terminal className="w-3.5 h-3.5"/> <span>ASM</span></div> },
-    { id: 'memory-editor', label: <div className="flex items-center gap-1.5"><Database className="w-4 h-4" /> <span>Memory Editor</span></div>, shortLabel: <div className="flex items-center gap-1"><Database className="w-3.5 h-3.5"/> <span>MemEdit</span></div> },
-    { id: 'watch', label: <div className="flex items-center gap-1.5"><Eye className="w-4 h-4" /> <span>Watch</span></div>, shortLabel: <div className="flex items-center gap-1"><Eye className="w-3.5 h-3.5"/> <span>Watch</span></div> },
-    { id: 'stack', label: <div className="flex items-center gap-1.5"><Layers className="w-4 h-4" /> <span>Stack</span></div>, shortLabel: <div className="flex items-center gap-1"><Layers className="w-3.5 h-3.5"/> <span>Stack</span></div> },
-    ...(isEnabled('cpuDiagram') ? [{ id: 'cpu-diagram' as TabType, label: <div className="flex items-center gap-1.5"><Activity className="w-4 h-4" /> <span>CPU Flow</span></div>, shortLabel: <div className="flex items-center gap-1"><Activity className="w-3.5 h-3.5"/> <span>CPU</span></div>, pcOnly: true }] : []),
+    { id: 'assembler', label: <div className="flex items-center gap-1.5 whitespace-nowrap"><Terminal className="w-4 h-4" /> <span>Assembler</span></div>, shortLabel: <div className="flex items-center gap-1 whitespace-nowrap"><Terminal className="w-3.5 h-3.5"/> <span>ASM</span></div> },
+    { id: 'memory-editor', label: <div className="flex items-center gap-1.5 whitespace-nowrap"><Database className="w-4 h-4" /> <span>Memory Editor</span></div>, shortLabel: <div className="flex items-center gap-1 whitespace-nowrap"><Database className="w-3.5 h-3.5"/> <span>MemEdit</span></div> },
+    { id: 'watch', label: <div className="flex items-center gap-1.5 whitespace-nowrap"><Eye className="w-4 h-4" /> <span>Watch</span></div>, shortLabel: <div className="flex items-center gap-1 whitespace-nowrap"><Eye className="w-3.5 h-3.5"/> <span>Watch</span></div> },
+    { id: 'stack', label: <div className="flex items-center gap-1.5 whitespace-nowrap"><Layers className="w-4 h-4" /> <span>Stack</span></div>, shortLabel: <div className="flex items-center gap-1 whitespace-nowrap"><Layers className="w-3.5 h-3.5"/> <span>Stack</span></div> },
+    ...(isEnabled('cpuDiagram') ? [{ id: 'cpu-diagram' as TabType, label: <div className="flex items-center gap-1.5 whitespace-nowrap"><Activity className="w-4 h-4" /> <span>CPU Flow</span></div>, shortLabel: <div className="flex items-center gap-1 whitespace-nowrap"><Activity className="w-3.5 h-3.5"/> <span>CPU</span></div>, pcOnly: true }] : []),
   ];
 
   // Left panel content
@@ -379,9 +466,9 @@ export default function App() {
   );
 
   return (
-    <div className={`h-screen w-screen ${bg} ${text} flex flex-col overflow-hidden transition-colors duration-300`}>
+    <div className={`fixed inset-0 ${bg} ${text} flex flex-col overflow-hidden transition-colors duration-300`}>
       {/* ─── Header ─── */}
-      <header className={`flex-shrink-0 px-3 sm:px-6 py-2 sm:py-3 ${headerBg} border-b shadow-lg transition-colors duration-300`}>
+      <header className={`relative z-50 flex-shrink-0 px-3 sm:px-6 py-2 sm:py-3 ${headerBg} border-b shadow-lg transition-colors duration-300`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
@@ -418,37 +505,91 @@ export default function App() {
               </div>
             </div>
 
-            {/* Materi Dasar button */}
-            <button onClick={() => setShowMateriDasar(true)}
-              className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-blue-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-blue-600 border border-gray-200'}`}
-              title="Materi Dasar Z-80">
-              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-
-            {/* AI Review button */}
+            {/* AI Review button - Always visible */}
             <button onClick={() => setShowAIFeedback(true)}
               className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-purple-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-purple-600 border border-gray-200'}`}
               title="AI Code Review">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
-            {/* Tools button */}
-            <button onClick={() => setShowTools(true)}
-              className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-amber-600 border border-gray-200'}`}
-              title="Tools & Features">
-              <Settings2 className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
+            {/* Desktop only buttons */}
+            <div className="hidden sm:flex items-center gap-1.5 sm:gap-2">
+              {/* Materi Dasar button */}
+              <button onClick={() => setShowMateriDasar(true)}
+                className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-blue-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-blue-600 border border-gray-200'}`}
+                title="Materi Dasar Z-80">
+                <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
 
-            {/* Theme toggle */}
-            <button onClick={toggleTheme}
-              className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-yellow-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-indigo-500 border border-gray-200'}`}
-              title={`Switch to ${isDark ? 'light' : 'dark'} mode`}>
-              {isDark ? (
-                <Sun className="w-4 h-4 sm:w-5 sm:h-5" />
+              {/* Tools button */}
+              <button onClick={() => setShowTools(true)}
+                className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-amber-600 border border-gray-200'}`}
+                title="Tools & Features">
+                <Settings2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+
+              {/* Theme toggle */}
+              <button onClick={toggleTheme}
+                className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-yellow-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-indigo-500 border border-gray-200'}`}
+                title={`Switch to ${isDark ? 'light' : 'dark'} mode`}>
+                {isDark ? (
+                  <Sun className="w-4 h-4 sm:w-5 sm:h-5" />
+                ) : (
+                  <Moon className="w-4 h-4 sm:w-5 sm:h-5" />
+                )}
+              </button>
+
+              {/* Authentication (Desktop) */}
+              {user ? (
+                <button onClick={() => logout()} title={`Logged in as ${user.displayName}\nClick to logout`} className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full overflow-hidden border-2 transition-all hover:scale-105 ${isDark ? 'border-zinc-600 hover:border-red-400' : 'border-gray-300 hover:border-red-500'}`}>
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-full h-full bg-blue-500 flex items-center justify-center text-white font-bold" style={{ fontFamily: 'var(--font-sans)' }}>{user.displayName?.charAt(0) || 'U'}</div>
+                  )}
+                </button>
               ) : (
-                <Moon className="w-4 h-4 sm:w-5 sm:h-5" />
+                <button onClick={() => loginWithGoogle()}
+                  className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-emerald-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-emerald-600 border border-gray-200'}`}
+                  title="Login with Google">
+                  <LogIn className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
               )}
-            </button>
+            </div>
+
+            {/* Mobile Menu Toggle */}
+            <div className="sm:hidden relative" ref={mobileMenuRef}>
+              <button onClick={() => setShowMobileMenu(!showMobileMenu)}
+                className={`p-1.5 rounded-lg transition-all duration-300 hover:scale-110 ${showMobileMenu ? (isDark ? 'bg-zinc-700 text-zinc-100' : 'bg-gray-200 text-gray-900') : (isDark ? 'bg-zinc-800 text-zinc-400 border border-zinc-700' : 'bg-gray-100 text-gray-500 border border-gray-200')}`}>
+                <MoreVertical className="w-4 h-4" />
+              </button>
+              
+              {showMobileMenu && (
+                <div className={`absolute right-0 mt-2 w-48 rounded-xl shadow-xl border overflow-hidden z-50 ${isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-gray-200'}`}>
+                  <button onClick={() => { setShowMateriDasar(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm ${isDark ? 'text-zinc-200 hover:bg-zinc-800' : 'text-gray-700 hover:bg-gray-50'}`}>
+                    <BookOpen className="w-4 h-4 text-blue-500" /> Materi Dasar
+                  </button>
+                  <button onClick={() => { setShowTools(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm border-t ${isDark ? 'border-zinc-800 text-zinc-200 hover:bg-zinc-800' : 'border-gray-100 text-gray-700 hover:bg-gray-50'}`}>
+                    <Settings2 className="w-4 h-4 text-amber-500" /> Tools & Features
+                  </button>
+                  <button onClick={() => { toggleTheme(); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm border-t ${isDark ? 'border-zinc-800 text-zinc-200 hover:bg-zinc-800' : 'border-gray-100 text-gray-700 hover:bg-gray-50'}`}>
+                    {isDark ? <Sun className="w-4 h-4 text-yellow-500" /> : <Moon className="w-4 h-4 text-indigo-500" />} 
+                    {isDark ? 'Light Mode' : 'Dark Mode'}
+                  </button>
+                  <div className={`border-t ${isDark ? 'border-zinc-800' : 'border-gray-100'}`}>
+                    {user ? (
+                      <button onClick={() => { logout(); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm ${isDark ? 'text-red-400 hover:bg-zinc-800' : 'text-red-500 hover:bg-red-50'}`}>
+                        <LogOut className="w-4 h-4" /> Logout ({user.displayName?.split(' ')[0]})
+                      </button>
+                    ) : (
+                      <button onClick={() => { loginWithGoogle(); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm ${isDark ? 'text-emerald-400 hover:bg-zinc-800' : 'text-emerald-600 hover:bg-emerald-50'}`}>
+                        <LogIn className="w-4 h-4" /> Login with Google
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
         </div>
@@ -471,7 +612,7 @@ export default function App() {
         <div className="flex-1 overflow-hidden">
           {mobilePanel === 'code' && (
             <div className="h-full flex flex-col">
-              <div className={`flex items-center gap-1 px-2 py-1.5 ${tabBg} border-b ${border}`}>
+              <div className={`flex items-center justify-center gap-1 px-2 py-1.5 ${tabBg} border-b ${border}`}>
                 {desktopTabs.filter(t => !t.pcOnly).map((tab) => (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                     className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${activeTab === tab.id ? tabActive : tabInactive}`}>
@@ -506,10 +647,10 @@ export default function App() {
         </div>
 
         <div className={`flex-shrink-0 ${mobileNavBg} border-t ${border} safe-area-bottom`}>
-          <div className="grid grid-cols-4 gap-0">
+          <div className="flex justify-center gap-0">
             {mobileNavItems.map((item) => (
               <button key={item.id} onClick={() => setMobilePanel(item.id)}
-                className={`flex flex-col items-center justify-center py-2 transition-colors ${mobilePanel === item.id ? mobileNavActive : mobileNavInactive}`}>
+                className={`flex-1 flex flex-col items-center justify-center py-2 px-6 transition-colors ${mobilePanel === item.id ? mobileNavActive : mobileNavInactive}`}>
                 <span className="text-lg">{item.icon}</span>
                 <span className="text-xs mt-0.5 font-medium">{item.label}</span>
                 {mobilePanel === item.id && <div className={`w-5 h-0.5 rounded-full mt-1 ${isDark ? 'bg-blue-400' : 'bg-blue-500'}`} />}

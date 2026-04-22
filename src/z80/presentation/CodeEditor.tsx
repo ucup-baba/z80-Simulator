@@ -77,17 +77,32 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const highlightRef = useRef<HTMLDivElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
+  const scrollRAF = useRef<number>(0);
 
   const lines = value.split('\n');
   const lineCount = lines.length;
 
-  const handleScroll = useCallback(() => {
-    if (textareaRef.current && highlightRef.current && lineNumbersRef.current) {
-      highlightRef.current.scrollTop = textareaRef.current.scrollTop;
-      highlightRef.current.scrollLeft = textareaRef.current.scrollLeft;
-      lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
+  // Track scroll offsets in state for transform-based sync (reliable on mobile)
+  const [scrollOffset, setScrollOffset] = useState({ top: 0, left: 0 });
+
+  // Sync scroll position from textarea to all overlay layers
+  const syncScroll = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const { scrollTop, scrollLeft } = ta;
+    // Desktop overlay: use scrollTop (works fine on desktop)
+    if (highlightRef.current) {
+      highlightRef.current.scrollTop = scrollTop;
+      highlightRef.current.scrollLeft = scrollLeft;
     }
+    // Update scroll offset state for transform-based syncing (line numbers and mobile overlay)
+    setScrollOffset({ top: scrollTop, left: scrollLeft });
   }, []);
+
+  const handleScroll = useCallback(() => {
+    cancelAnimationFrame(scrollRAF.current);
+    scrollRAF.current = requestAnimationFrame(syncScroll);
+  }, [syncScroll]);
 
   // Tooltip handler for mnemonic hover (PC only)
   const handleHighlightMouseMove = useCallback((e: React.MouseEvent) => {
@@ -137,24 +152,31 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           className={`flex-shrink-0 ${lineNumBg} border-r ${borderColor} overflow-hidden select-none transition-colors duration-300`}
           style={{ width: '52px' }}
         >
-          <div className="py-3 px-1" style={{ fontFamily: 'var(--font-mono)' }}>
+          <div
+            className="py-3 px-1"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              transform: `translateY(${-scrollOffset.top}px)`,
+              willChange: 'transform',
+            }}
+          >
             {Array.from({ length: lineCount }, (_, i) => (
               <div
                 key={i}
-                className={`text-xs leading-relaxed flex items-center gap-0.5 cursor-pointer group ${lineNumColor}`}
-                style={{ height: '1.625em' }}
+                className={`text-xs md:text-sm flex gap-0.5 cursor-pointer group ${lineNumColor}`}
+                style={{ height: '21px', lineHeight: '21px' }}
                 onClick={() => onToggleBreakpoint?.(i + 1)}
                 title="Click to toggle breakpoint"
               >
                 {/* Breakpoint dot */}
-                <div className="w-3 h-3 flex items-center justify-center flex-shrink-0">
+                <div className="w-3 flex items-center justify-center flex-shrink-0" style={{ height: '100%' }}>
                   {breakpoints.has(i + 1) ? (
                     <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/50" />
                   ) : (
                     <div className="w-2.5 h-2.5 rounded-full opacity-0 group-hover:opacity-30 bg-red-400 transition-opacity hidden md:block" />
                   )}
                 </div>
-                <span className="text-right flex-1 pr-1">{i + 1}</span>
+                <span className="text-right flex-1 pr-1 block">{i + 1}</span>
               </div>
             ))}
           </div>
@@ -162,7 +184,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
         {/* Editor Area with Syntax Overlay */}
         <div className="flex-1 relative overflow-hidden">
-          {/* Syntax highlight overlay — pointer-events enabled for tooltip */}
+          {/* Desktop syntax highlight overlay — pointer-events enabled for tooltip */}
           <div
             ref={highlightRef}
             className="absolute inset-0 overflow-hidden px-4 py-3 hidden md:block"
@@ -170,33 +192,38 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             aria-hidden="true"
           >
             <pre
-              className="text-sm leading-relaxed whitespace-pre"
-              style={{ fontFamily: 'var(--font-mono)', pointerEvents: 'none' }}
+              className="text-xs md:text-sm whitespace-pre"
+              style={{ fontFamily: 'var(--font-mono)', pointerEvents: 'none', lineHeight: '21px' }}
             >
               {lines.map((line, i) => (
                 <div
                   key={i}
                   dangerouslySetInnerHTML={{ __html: highlightLine(line, isDark) || '&nbsp;' }}
-                  style={{ height: '1.625em' }}
+                  style={{ height: '21px' }}
                 />
               ))}
             </pre>
           </div>
 
-          {/* Mobile highlight overlay (no pointer events) */}
+          {/* Mobile syntax highlight overlay — transform-based scroll sync */}
           <div
             className="absolute inset-0 pointer-events-none overflow-hidden px-4 py-3 md:hidden"
             aria-hidden="true"
           >
             <pre
-              className="text-sm leading-relaxed whitespace-pre"
-              style={{ fontFamily: 'var(--font-mono)' }}
+              className="text-xs md:text-sm whitespace-pre"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                transform: `translate(${-scrollOffset.left}px, ${-scrollOffset.top}px)`,
+                willChange: 'transform',
+                lineHeight: '21px'
+              }}
             >
               {lines.map((line, i) => (
                 <div
                   key={i}
                   dangerouslySetInnerHTML={{ __html: highlightLine(line, isDark) || '&nbsp;' }}
-                  style={{ height: '1.625em' }}
+                  style={{ height: '21px' }}
                 />
               ))}
             </pre>
@@ -210,10 +237,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             onScroll={handleScroll}
             onMouseMove={handleHighlightMouseMove}
             onMouseLeave={handleHighlightMouseLeave}
-            className={`w-full h-full px-4 py-3 ${editorBg} text-transparent caret-blue-400 text-sm leading-relaxed resize-none focus:outline-none selection:bg-blue-500/30`}
-            style={{ fontFamily: 'var(--font-mono)', caretColor: isDark ? '#60a5fa' : '#2563eb', position: 'relative', zIndex: 2, background: 'transparent' }}
+            className={`w-full h-full px-4 py-3 ${editorBg} text-transparent caret-blue-400 text-xs md:text-sm whitespace-pre resize-none focus:outline-none selection:bg-blue-500/30 overflow-auto`}
+            style={{ fontFamily: 'var(--font-mono)', caretColor: isDark ? '#60a5fa' : '#2563eb', position: 'relative', zIndex: 2, background: 'transparent', lineHeight: '21px' }}
             placeholder="Enter Z-80 assembly code..."
             spellCheck={false}
+            wrap="off"
           />
         </div>
 

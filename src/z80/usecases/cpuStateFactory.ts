@@ -52,7 +52,7 @@ export function createRegisterState(): RegisterState {
     },
     registers16: {
       PC: 0x0000,
-      SP: 0x00FF, // Stack grows downward from 0xFF
+      SP: 0xFFFF, // Stack pointer starts at top of memory (matches standard Z80 init)
       IX: 0x0000, // Index Register X
       IY: 0x0000, // Index Register Y
     },

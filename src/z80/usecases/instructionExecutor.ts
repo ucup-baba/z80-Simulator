@@ -26,9 +26,9 @@ function getPair(s: CPUState, p: RegisterPair): number {
     case 'HL': return (r.H << 8) | r.L;
     case 'AF': {
       const f = (s.registers.flags.S ? 0x80 : 0) | (s.registers.flags.Z ? 0x40 : 0)
-              | (s.registers.flags.Y ? 0x20 : 0) | (s.registers.flags.H ? 0x10 : 0)
-              | (s.registers.flags.X ? 0x08 : 0) | (s.registers.flags.P ? 0x04 : 0)
-              | (s.registers.flags.N ? 0x02 : 0) | (s.registers.flags.C ? 0x01 : 0);
+        | (s.registers.flags.Y ? 0x20 : 0) | (s.registers.flags.H ? 0x10 : 0)
+        | (s.registers.flags.X ? 0x08 : 0) | (s.registers.flags.P ? 0x04 : 0)
+        | (s.registers.flags.N ? 0x02 : 0) | (s.registers.flags.C ? 0x01 : 0);
       return (r.A << 8) | f;
     }
   }
@@ -518,12 +518,18 @@ function executeLdi(s: CPUState): ExecutionResult {
 }
 function executeLdir(s: CPUState): ExecutionResult {
   let bc = getPair(s, 'BC');
+  let iterations = 0;
   do {
     const hl = getPair(s, 'HL'); const de = getPair(s, 'DE');
     s.memory.bytes[de] = s.memory.bytes[hl];
     setPair(s, 'HL', hl + 1); setPair(s, 'DE', de + 1); bc--; setPair(s, 'BC', bc);
+    iterations++;
   } while (bc !== 0);
   s.registers.flags.H = false; s.registers.flags.N = false; s.registers.flags.P = false;
+  // T-states: 21 per repeat iteration, 16 for last
+  s.performance.clockCycles += (iterations - 1) * 21 + 16;
+  // R register: 2 M1 cycles per extra iteration (step function adds 2 for first)
+  const rLdir = s.registers.special.R; s.registers.special.R = (rLdir & 0x80) | ((rLdir + 2 * (iterations - 1)) & 0x7F);
   return ok(s, `LDIR: block copy complete`);
 }
 function executeLdd(s: CPUState): ExecutionResult {
@@ -535,12 +541,17 @@ function executeLdd(s: CPUState): ExecutionResult {
 }
 function executeLddr(s: CPUState): ExecutionResult {
   let bc = getPair(s, 'BC');
+  let iterations = 0;
   do {
     const hl = getPair(s, 'HL'); const de = getPair(s, 'DE');
     s.memory.bytes[de] = s.memory.bytes[hl];
     setPair(s, 'HL', hl - 1); setPair(s, 'DE', de - 1); bc--; setPair(s, 'BC', bc);
+    iterations++;
   } while (bc !== 0);
   s.registers.flags.H = false; s.registers.flags.N = false; s.registers.flags.P = false;
+  // T-states: 21 per repeat iteration, 16 for last
+  s.performance.clockCycles += (iterations - 1) * 21 + 16;
+  const rLddr = s.registers.special.R; s.registers.special.R = (rLddr & 0x80) | ((rLddr + 2 * (iterations - 1)) & 0x7F);
   return ok(s, `LDDR: block copy complete`);
 }
 
@@ -555,13 +566,23 @@ function executeCpi(s: CPUState): ExecutionResult {
 }
 function executeCpir(s: CPUState): ExecutionResult {
   const a = getR8(s, 'A'); let bc = getPair(s, 'BC'); let found = false;
+  let lastM = 0;
+  let iterations = 0;
   do {
     const hl = getPair(s, 'HL'); const m = s.memory.bytes[hl];
+    lastM = m;
     setPair(s, 'HL', hl + 1); bc--; setPair(s, 'BC', bc);
+    iterations++;
     if (a === m) { found = true; break; }
   } while (bc !== 0);
-  const r = found ? 0 : 1;
-  s.registers.flags.Z = found; s.registers.flags.N = true; s.registers.flags.P = bc !== 0;
+  const diff = (a - lastM) & 0xFF;
+  s.registers.flags.S = (diff & 0x80) !== 0;
+  s.registers.flags.Z = found;
+  s.registers.flags.H = (a & 0x0F) < (lastM & 0x0F);
+  s.registers.flags.N = true;
+  s.registers.flags.P = bc !== 0;
+  s.performance.clockCycles += (iterations - 1) * 21 + 16;
+  const rCpir = s.registers.special.R; s.registers.special.R = (rCpir & 0x80) | ((rCpir + 2 * (iterations - 1)) & 0x7F);
   return ok(s, `CPIR: ${found ? 'found' : 'not found'}, BC=${hex16(bc)}`);
 }
 function executeCpd(s: CPUState): ExecutionResult {
@@ -574,12 +595,25 @@ function executeCpd(s: CPUState): ExecutionResult {
 }
 function executeCpdr(s: CPUState): ExecutionResult {
   const a = getR8(s, 'A'); let bc = getPair(s, 'BC'); let found = false;
+  let lastM = 0;
+  let iterations = 0;
   do {
     const hl = getPair(s, 'HL'); const m = s.memory.bytes[hl];
+    lastM = m;
     setPair(s, 'HL', hl - 1); bc--; setPair(s, 'BC', bc);
+    iterations++;
     if (a === m) { found = true; break; }
   } while (bc !== 0);
-  s.registers.flags.Z = found; s.registers.flags.N = true; s.registers.flags.P = bc !== 0;
+  const diff = (a - lastM) & 0xFF;
+  s.registers.flags.S = (diff & 0x80) !== 0;
+  s.registers.flags.Z = found;
+  s.registers.flags.H = (a & 0x0F) < (lastM & 0x0F);
+  s.registers.flags.N = true;
+  s.registers.flags.P = bc !== 0;
+  // C flag is NOT affected by CPD/CPDR
+  // T-states: 21 per repeat iteration, 16 for last
+  s.performance.clockCycles += (iterations - 1) * 21 + 16;
+  const rCpdr = s.registers.special.R; s.registers.special.R = (rCpdr & 0x80) | ((rCpdr + 2 * (iterations - 1)) & 0x7F);
   return ok(s, `CPDR: ${found ? 'found' : 'not found'}`);
 }
 
@@ -615,7 +649,10 @@ function executeIni(s: CPUState): ExecutionResult {
   return ok(s, `INI`);
 }
 function executeInir(s: CPUState): ExecutionResult {
+  const startB = getR8(s, 'B');
   do { executeIni(s); } while (getR8(s, 'B') !== 0);
+  s.performance.clockCycles += (startB - 1) * 21 + 16;
+  const rInir = s.registers.special.R; s.registers.special.R = (rInir & 0x80) | ((rInir + 2 * (startB - 1)) & 0x7F);
   return ok(s, `INIR: complete`);
 }
 function executeInd(s: CPUState): ExecutionResult {
@@ -625,7 +662,10 @@ function executeInd(s: CPUState): ExecutionResult {
   return ok(s, `IND`);
 }
 function executeIndr(s: CPUState): ExecutionResult {
+  const startB = getR8(s, 'B');
   do { executeInd(s); } while (getR8(s, 'B') !== 0);
+  s.performance.clockCycles += (startB - 1) * 21 + 16;
+  const rIndr = s.registers.special.R; s.registers.special.R = (rIndr & 0x80) | ((rIndr + 2 * (startB - 1)) & 0x7F);
   return ok(s, `INDR: complete`);
 }
 function executeOuti(s: CPUState): ExecutionResult {
@@ -635,7 +675,10 @@ function executeOuti(s: CPUState): ExecutionResult {
   return ok(s, `OUTI`);
 }
 function executeOtir(s: CPUState): ExecutionResult {
+  const startB = getR8(s, 'B');
   do { executeOuti(s); } while (getR8(s, 'B') !== 0);
+  s.performance.clockCycles += (startB - 1) * 21 + 16;
+  const rOtir = s.registers.special.R; s.registers.special.R = (rOtir & 0x80) | ((rOtir + 2 * (startB - 1)) & 0x7F);
   return ok(s, `OTIR: complete`);
 }
 function executeOutd(s: CPUState): ExecutionResult {
@@ -645,7 +688,10 @@ function executeOutd(s: CPUState): ExecutionResult {
   return ok(s, `OUTD`);
 }
 function executeOtdr(s: CPUState): ExecutionResult {
+  const startB = getR8(s, 'B');
   do { executeOutd(s); } while (getR8(s, 'B') !== 0);
+  s.performance.clockCycles += (startB - 1) * 21 + 16;
+  const rOtdr = s.registers.special.R; s.registers.special.R = (rOtdr & 0x80) | ((rOtdr + 2 * (startB - 1)) & 0x7F);
   return ok(s, `OTDR: complete`);
 }
 // ─── Jump / Call / Ret / Stack / Interrupt ───────────────────────────
@@ -788,13 +834,13 @@ export function executeInstruction(state: CPUState, instruction: Instruction): E
     case 'ADC': result = executeAdc(s, instruction); break;
     case 'SUB': result = executeSub(s, instruction); break;
     case 'SBC': result = executeSbc(s, instruction); break;
-    case 'CP':  result = executeCp(s, instruction); break;
+    case 'CP': result = executeCp(s, instruction); break;
     case 'INC': result = executeInc(s, instruction); break;
     case 'DEC': result = executeDec(s, instruction); break;
 
     // ── Logic ──
     case 'AND': result = executeAnd(s, instruction); break;
-    case 'OR':  result = executeOr(s, instruction); break;
+    case 'OR': result = executeOr(s, instruction); break;
     case 'XOR': result = executeXor(s, instruction); break;
     case 'CPL': result = executeCpl(s); break;
     case 'NEG': result = executeNeg(s); break;
@@ -803,19 +849,19 @@ export function executeInstruction(state: CPUState, instruction: Instruction): E
     case 'DAA': result = executeDaa(s); break;
 
     // ── Rotate & Shift ──
-    case 'RL':   result = execRotateShift(s, instruction, aluRl,  'RL'); break;
-    case 'RR':   result = execRotateShift(s, instruction, aluRr,  'RR'); break;
-    case 'RLC':  result = execRotateShift(s, instruction, aluRlc, 'RLC'); break;
-    case 'RRC':  result = execRotateShift(s, instruction, aluRrc, 'RRC'); break;
-    case 'SLA':  result = execRotateShift(s, instruction, aluSla, 'SLA'); break;
-    case 'SRA':  result = execRotateShift(s, instruction, aluSra, 'SRA'); break;
-    case 'SRL':  result = execRotateShift(s, instruction, aluSrl, 'SRL'); break;
+    case 'RL': result = execRotateShift(s, instruction, aluRl, 'RL'); break;
+    case 'RR': result = execRotateShift(s, instruction, aluRr, 'RR'); break;
+    case 'RLC': result = execRotateShift(s, instruction, aluRlc, 'RLC'); break;
+    case 'RRC': result = execRotateShift(s, instruction, aluRrc, 'RRC'); break;
+    case 'SLA': result = execRotateShift(s, instruction, aluSla, 'SLA'); break;
+    case 'SRA': result = execRotateShift(s, instruction, aluSra, 'SRA'); break;
+    case 'SRL': result = execRotateShift(s, instruction, aluSrl, 'SRL'); break;
     case 'RLCA': result = executeRlca(s); break;
-    case 'RLA':  result = executeRla(s); break;
+    case 'RLA': result = executeRla(s); break;
     case 'RRCA': result = executeRrca(s); break;
-    case 'RRA':  result = executeRra(s); break;
-    case 'RLD':  result = executeRld(s); break;
-    case 'RRD':  result = executeRrd(s); break;
+    case 'RRA': result = executeRra(s); break;
+    case 'RLD': result = executeRld(s); break;
+    case 'RRD': result = executeRrd(s); break;
 
     // ── Bit Manipulation ──
     case 'BIT': result = executeBit(s, instruction); break;
@@ -823,77 +869,77 @@ export function executeInstruction(state: CPUState, instruction: Instruction): E
     case 'RES': result = executeRes(s, instruction); break;
 
     // ── Exchange ──
-    case 'EX':  result = executeEx(s, instruction); break;
+    case 'EX': result = executeEx(s, instruction); break;
     case 'EXX': result = executeExx(s); break;
 
     // ── Block Transfer ──
-    case 'LDI':  result = executeLdi(s); break;
+    case 'LDI': result = executeLdi(s); break;
     case 'LDIR': result = executeLdir(s); break;
-    case 'LDD':  result = executeLdd(s); break;
+    case 'LDD': result = executeLdd(s); break;
     case 'LDDR': result = executeLddr(s); break;
 
     // ── Block Search ──
-    case 'CPI':  result = executeCpi(s); break;
+    case 'CPI': result = executeCpi(s); break;
     case 'CPIR': result = executeCpir(s); break;
-    case 'CPD':  result = executeCpd(s); break;
+    case 'CPD': result = executeCpd(s); break;
     case 'CPDR': result = executeCpdr(s); break;
 
     // ── Jump ──
-    case 'JP':   result = executeJp(s, instruction); break;
+    case 'JP': result = executeJp(s, instruction); break;
     case 'JPNZ': result = executeJp(s, instruction, 'NZ'); break;
-    case 'JPZ':  result = executeJp(s, instruction, 'Z'); break;
-    case 'JPC':  result = executeJp(s, instruction, 'C'); break;
+    case 'JPZ': result = executeJp(s, instruction, 'Z'); break;
+    case 'JPC': result = executeJp(s, instruction, 'C'); break;
     case 'JPNC': result = executeJp(s, instruction, 'NC'); break;
-    case 'JPP':  result = executeJp(s, instruction, 'P'); break;
-    case 'JPM':  result = executeJp(s, instruction, 'M'); break;
+    case 'JPP': result = executeJp(s, instruction, 'P'); break;
+    case 'JPM': result = executeJp(s, instruction, 'M'); break;
     case 'JPPE': result = executeJp(s, instruction, 'PE'); break;
     case 'JPPO': result = executeJp(s, instruction, 'PO'); break;
 
     // ── Relative Jump ──
-    case 'JR':   result = executeJr(s, instruction); break;
+    case 'JR': result = executeJr(s, instruction); break;
     case 'JRNZ': result = executeJr(s, instruction, 'NZ'); break;
-    case 'JRZ':  result = executeJr(s, instruction, 'Z'); break;
-    case 'JRC':  result = executeJr(s, instruction, 'C'); break;
+    case 'JRZ': result = executeJr(s, instruction, 'Z'); break;
+    case 'JRC': result = executeJr(s, instruction, 'C'); break;
     case 'JRNC': result = executeJr(s, instruction, 'NC'); break;
     case 'DJNZ': result = executeDjnz(s, instruction); break;
 
     // ── Call ──
-    case 'CALL':   result = executeCall(s, instruction); break;
+    case 'CALL': result = executeCall(s, instruction); break;
     case 'CALLNZ': result = executeCall(s, instruction, 'NZ'); break;
-    case 'CALLZ':  result = executeCall(s, instruction, 'Z'); break;
-    case 'CALLC':  result = executeCall(s, instruction, 'C'); break;
+    case 'CALLZ': result = executeCall(s, instruction, 'Z'); break;
+    case 'CALLC': result = executeCall(s, instruction, 'C'); break;
     case 'CALLNC': result = executeCall(s, instruction, 'NC'); break;
-    case 'CALLP':  result = executeCall(s, instruction, 'P'); break;
-    case 'CALLM':  result = executeCall(s, instruction, 'M'); break;
+    case 'CALLP': result = executeCall(s, instruction, 'P'); break;
+    case 'CALLM': result = executeCall(s, instruction, 'M'); break;
     case 'CALLPE': result = executeCall(s, instruction, 'PE'); break;
     case 'CALLPO': result = executeCall(s, instruction, 'PO'); break;
 
     // ── Return ──
-    case 'RET':   result = executeRet(s); break;
+    case 'RET': result = executeRet(s); break;
     case 'RETNZ': result = executeRet(s, 'NZ'); break;
-    case 'RETZ':  result = executeRet(s, 'Z'); break;
-    case 'RETC':  result = executeRet(s, 'C'); break;
+    case 'RETZ': result = executeRet(s, 'Z'); break;
+    case 'RETC': result = executeRet(s, 'C'); break;
     case 'RETNC': result = executeRet(s, 'NC'); break;
-    case 'RETP':  result = executeRet(s, 'P'); break;
-    case 'RETM':  result = executeRet(s, 'M'); break;
+    case 'RETP': result = executeRet(s, 'P'); break;
+    case 'RETM': result = executeRet(s, 'M'); break;
     case 'RETPE': result = executeRet(s, 'PE'); break;
     case 'RETPO': result = executeRet(s, 'PO'); break;
-    case 'RETI':  result = executeReti(s); break;
-    case 'RETN':  result = executeRetn(s); break;
+    case 'RETI': result = executeReti(s); break;
+    case 'RETN': result = executeRetn(s); break;
 
     // ── RST ──
     case 'RST': result = executeRst(s, instruction); break;
 
     // ── Stack ──
     case 'PUSH': result = executePush(s, instruction); break;
-    case 'POP':  result = executePop(s, instruction); break;
+    case 'POP': result = executePop(s, instruction); break;
 
     // ── I/O ──
-    case 'IN':   result = executeIn(s, instruction); break;
-    case 'OUT':  result = executeOut(s, instruction); break;
-    case 'INI':  result = executeIni(s); break;
+    case 'IN': result = executeIn(s, instruction); break;
+    case 'OUT': result = executeOut(s, instruction); break;
+    case 'INI': result = executeIni(s); break;
     case 'INIR': result = executeInir(s); break;
-    case 'IND':  result = executeInd(s); break;
+    case 'IND': result = executeInd(s); break;
     case 'INDR': result = executeIndr(s); break;
     case 'OUTI': result = executeOuti(s); break;
     case 'OTIR': result = executeOtir(s); break;
@@ -916,9 +962,8 @@ export function executeInstruction(state: CPUState, instruction: Instruction): E
       result = fail(s, `Unknown instruction: ${instruction.mnemonic}`);
   }
 
-  // Update performance counters
+  // Update last instruction info (counter is updated in cpuExecutor)
   if (result.success) {
-    result.updatedState.performance.instructionsExecuted++;
     result.updatedState.lastInstruction = { source: instruction.sourceCode, output: result.message || '' };
   }
 

@@ -17,7 +17,7 @@ export interface FeatureFlags {
 
 const DEFAULT_FLAGS: FeatureFlags = {
   autocomplete: true,
-  cpuDiagram: true,
+  cpuDiagram: false,
   resizablePanels: true,
   toastNotifications: true,
   multiFileTabs: true,

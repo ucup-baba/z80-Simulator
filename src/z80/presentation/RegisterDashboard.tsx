@@ -58,12 +58,12 @@ const RegisterDisplay: React.FC<RegisterDisplayProps> = ({ name, value, bits, hi
 
   return (
     <div
-      className={`flex items-center justify-between px-2 py-1 rounded border transition-all duration-300 cursor-pointer hover:opacity-80 ${baseBg} ${flashClass}`}
+      className={`flex items-center justify-between px-2 py-0.5 lg:py-1 rounded border transition-all duration-300 cursor-pointer hover:opacity-80 ${baseBg} ${flashClass}`}
       onClick={onToggleFormat}
       title={`Click to toggle format (${format})`}
     >
-      <span className={`text-xs font-semibold min-w-[28px] ${isDark ? 'text-zinc-400' : 'text-gray-500'}`} style={{ fontFamily: 'var(--font-sans)' }}>{name}</span>
-      <span className={`text-xs font-bold ${isDark ? 'text-zinc-100' : 'text-gray-900'}`} style={{ fontFamily: 'var(--font-mono)' }}>
+      <span className={`text-[10px] lg:text-xs font-semibold min-w-[28px] ${isDark ? 'text-zinc-400' : 'text-gray-500'}`} style={{ fontFamily: 'var(--font-sans)' }}>{name}</span>
+      <span className={`text-[10px] lg:text-xs font-bold ${isDark ? 'text-zinc-100' : 'text-gray-900'}`} style={{ fontFamily: 'var(--font-mono)' }}>
         {format === 'hex' && <span className={isDark ? 'text-zinc-600' : 'text-gray-400'}>0x</span>}
         {formatValue()}
       </span>
@@ -80,10 +80,9 @@ interface FlagBitDisplayProps {
 
 const FlagBitDisplay: React.FC<FlagBitDisplayProps> = ({ bit, name, value, isDark }) => {
   return (
-    <div className="flex items-center gap-1.5 px-2 py-0.5">
-      <span className={`text-xs min-w-[10px] ${isDark ? 'text-zinc-600' : 'text-gray-400'}`} style={{ fontFamily: 'var(--font-mono)' }}>{bit}</span>
-      <span className={`text-xs font-medium min-w-[24px] ${isDark ? 'text-zinc-400' : 'text-gray-500'}`} style={{ fontFamily: 'var(--font-mono)' }}>{name}</span>
-      <div className={`w-5 h-5 rounded flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+    <div className="flex items-center justify-between px-1 lg:px-2 py-0.5 lg:py-1" title={`Bit ${bit}`}>
+      <span className={`text-[10px] lg:text-xs font-medium ${isDark ? 'text-zinc-400' : 'text-gray-500'}`} style={{ fontFamily: 'var(--font-mono)' }}>{name}</span>
+      <div className={`w-4 h-4 lg:w-5 lg:h-5 rounded flex items-center justify-center text-[10px] lg:text-xs font-bold transition-all duration-300 ${
         value
           ? isDark ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50' : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
           : isDark ? 'bg-zinc-800 text-zinc-700 border border-zinc-700' : 'bg-gray-100 text-gray-400 border border-gray-200'
@@ -143,19 +142,21 @@ export const RegisterDashboard: React.FC<RegisterDashboardProps> = ({
       <div className="flex-1 overflow-y-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
           {/* Left Column - Main Registers */}
-          <div className="space-y-1.5">
-            <h3 className={`text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-2`} style={{ fontFamily: 'var(--font-sans)' }}>Main registers</h3>
-            <RegisterDisplay name="A" value={registers.registers8.A} bits={8} highlight isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-            <RegisterDisplay name="B" value={registers.registers8.B} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-            <RegisterDisplay name="C" value={registers.registers8.C} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-            <RegisterDisplay name="D" value={registers.registers8.D} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-            <RegisterDisplay name="E" value={registers.registers8.E} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-            <RegisterDisplay name="H" value={registers.registers8.H} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-            <RegisterDisplay name="L" value={registers.registers8.L} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+          <div className="space-y-1.5 lg:space-y-2">
+            <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-1 lg:mb-2`} style={{ fontFamily: 'var(--font-sans)' }}>Main registers</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-1 gap-1 lg:gap-1.5">
+              <RegisterDisplay name="A" value={registers.registers8.A} bits={8} highlight isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+              <RegisterDisplay name="B" value={registers.registers8.B} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+              <RegisterDisplay name="C" value={registers.registers8.C} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+              <RegisterDisplay name="D" value={registers.registers8.D} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+              <RegisterDisplay name="E" value={registers.registers8.E} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+              <RegisterDisplay name="H" value={registers.registers8.H} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+              <RegisterDisplay name="L" value={registers.registers8.L} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+            </div>
 
-            <div className="pt-2">
-              <h3 className={`text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-2`} style={{ fontFamily: 'var(--font-sans)' }}>Flags (F)</h3>
-              <div className={`${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded p-1 space-y-0`}>
+            <div className="pt-1 lg:pt-2">
+              <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-1 lg:mb-2`} style={{ fontFamily: 'var(--font-sans)' }}>Flags (F)</h3>
+              <div className={`${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded p-1 lg:p-1.5 grid grid-cols-4 lg:grid-cols-2 gap-1 lg:gap-1.5`}>
                 <FlagBitDisplay bit={7} name="SF" value={registers.flags.S} isDark={isDark} />
                 <FlagBitDisplay bit={6} name="ZF" value={registers.flags.Z} isDark={isDark} />
                 <FlagBitDisplay bit={5} name="YF" value={registers.flags.Y} isDark={isDark} />
@@ -169,19 +170,21 @@ export const RegisterDashboard: React.FC<RegisterDashboardProps> = ({
           </div>
 
           {/* Middle Column - Alternate Registers */}
-          <div className="space-y-1.5">
-            <h3 className={`text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-2`} style={{ fontFamily: 'var(--font-sans)' }}>Alternate registers</h3>
-            <RegisterDisplay name="A'" value={registers.alternate.A} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-            <RegisterDisplay name="B'" value={registers.alternate.B} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-            <RegisterDisplay name="C'" value={registers.alternate.C} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-            <RegisterDisplay name="D'" value={registers.alternate.D} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-            <RegisterDisplay name="E'" value={registers.alternate.E} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-            <RegisterDisplay name="H'" value={registers.alternate.H} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-            <RegisterDisplay name="L'" value={registers.alternate.L} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+          <div className="space-y-1.5 lg:space-y-2">
+            <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-1 lg:mb-2`} style={{ fontFamily: 'var(--font-sans)' }}>Alternate registers</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-1 gap-1 lg:gap-1.5">
+              <RegisterDisplay name="A'" value={registers.alternate.A} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+              <RegisterDisplay name="B'" value={registers.alternate.B} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+              <RegisterDisplay name="C'" value={registers.alternate.C} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+              <RegisterDisplay name="D'" value={registers.alternate.D} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+              <RegisterDisplay name="E'" value={registers.alternate.E} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+              <RegisterDisplay name="H'" value={registers.alternate.H} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+              <RegisterDisplay name="L'" value={registers.alternate.L} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+            </div>
 
-            <div className="pt-2">
-              <h3 className={`text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-2`} style={{ fontFamily: 'var(--font-sans)' }}>Alternate Flags (F')</h3>
-              <div className={`${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded p-1 space-y-0`}>
+            <div className="pt-1 lg:pt-2">
+              <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-1 lg:mb-2`} style={{ fontFamily: 'var(--font-sans)' }}>Alternate Flags (F')</h3>
+              <div className={`${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded p-1 lg:p-1.5 grid grid-cols-4 lg:grid-cols-2 gap-1 lg:gap-1.5`}>
                 <FlagBitDisplay bit={7} name="SF'" value={registers.alternate.flags.S} isDark={isDark} />
                 <FlagBitDisplay bit={6} name="ZF'" value={registers.alternate.flags.Z} isDark={isDark} />
                 <FlagBitDisplay bit={5} name="YF'" value={registers.alternate.flags.Y} isDark={isDark} />
@@ -211,13 +214,13 @@ export const RegisterDashboard: React.FC<RegisterDashboardProps> = ({
 
             {/* Performance */}
             <div>
-              <h3 className={`text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-1`}>Performance</h3>
-              <div className="space-y-1">
-                <div className={`flex justify-between px-2 py-1 ${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded text-xs`}>
+              <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-1 lg:mb-2`}>Performance</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-1 gap-1 lg:gap-1.5">
+                <div className={`flex flex-col lg:flex-row justify-center lg:justify-between px-2 py-0.5 lg:py-1 ${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded text-[10px] lg:text-xs`}>
                   <span className={subtext}>Cycles:</span>
                   <span className={`font-bold ${isDark ? 'text-zinc-200' : 'text-gray-800'}`} style={{ fontFamily: 'var(--font-mono)' }}>{performance.clockCycles}</span>
                 </div>
-                <div className={`flex justify-between px-2 py-1 ${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded text-xs`}>
+                <div className={`flex flex-col lg:flex-row justify-center lg:justify-between px-2 py-0.5 lg:py-1 ${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded text-[10px] lg:text-xs`}>
                   <span className={subtext}>Instructions:</span>
                   <span className={`font-bold ${isDark ? 'text-zinc-200' : 'text-gray-800'}`} style={{ fontFamily: 'var(--font-mono)' }}>{performance.instructionsExecuted}</span>
                 </div>
@@ -226,8 +229,8 @@ export const RegisterDashboard: React.FC<RegisterDashboardProps> = ({
 
             {/* 16-bit Registers */}
             <div>
-              <h3 className={`text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-2`}>16-bit registers</h3>
-              <div className="grid grid-cols-2 gap-1">
+              <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-1 lg:mb-2`}>16-bit registers</h3>
+              <div className="grid grid-cols-2 gap-1 lg:gap-1.5">
                 <RegisterDisplay name="BC" value={BC} bits={16} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
                 <RegisterDisplay name="SP" value={registers.registers16.SP} bits={16} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
                 <RegisterDisplay name="DE" value={DE} bits={16} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
@@ -238,30 +241,30 @@ export const RegisterDashboard: React.FC<RegisterDashboardProps> = ({
               </div>
             </div>
 
-            {/* Special Registers */}
-            <div>
-              <h3 className={`text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-2`}>Special</h3>
-              <div className="grid grid-cols-2 gap-1">
-                <RegisterDisplay name="I" value={registers.special.I} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
-                <RegisterDisplay name="R" value={registers.special.R} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+            <div className="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-2">
+              {/* Special Registers */}
+              <div>
+                <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-1 lg:mb-2`}>Special</h3>
+                <div className="space-y-1 lg:space-y-1.5">
+                  <RegisterDisplay name="I" value={registers.special.I} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+                  <RegisterDisplay name="R" value={registers.special.R} bits={8} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
+                </div>
               </div>
-            </div>
 
-            {/* Interrupt Control */}
-            <div>
-              <h3 className={`text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-2`}>Interrupt</h3>
-              <div className="grid grid-cols-3 gap-1">
-                {(['IFF1', 'IFF2'] as const).map(name => (
-                  <div key={name} className={`flex items-center justify-between px-2 py-1 ${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded`}>
-                    <span className={`text-xs ${subtext}`} style={{ fontFamily: 'var(--font-mono)' }}>{name}</span>
-                    <span className={`text-xs font-bold ${registers.interrupt[name] ? 'text-emerald-400' : isDark ? 'text-zinc-600' : 'text-gray-400'}`} style={{ fontFamily: 'var(--font-mono)' }}>
-                      {registers.interrupt[name] ? '1' : '0'}
+              {/* Interrupt Control */}
+              <div>
+                <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-1 lg:mb-2`}>Interrupt</h3>
+                <div className="space-y-1 lg:space-y-1.5">
+                  <div className={`flex items-center justify-between px-2 py-0.5 lg:py-1 ${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded`}>
+                    <span className={`text-[10px] lg:text-xs ${subtext}`} style={{ fontFamily: 'var(--font-mono)' }}>IFF</span>
+                    <span className={`text-[10px] lg:text-xs font-bold ${registers.interrupt.IFF1 ? 'text-emerald-400' : isDark ? 'text-zinc-600' : 'text-gray-400'}`} style={{ fontFamily: 'var(--font-mono)' }}>
+                      {registers.interrupt.IFF1 ? '1' : '0'}/{registers.interrupt.IFF2 ? '1' : '0'}
                     </span>
                   </div>
-                ))}
-                <div className={`flex items-center justify-between px-2 py-1 ${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded`}>
-                  <span className={`text-xs ${subtext}`} style={{ fontFamily: 'var(--font-mono)' }}>IM</span>
-                  <span className={`text-xs font-bold ${isDark ? 'text-zinc-200' : 'text-gray-800'}`} style={{ fontFamily: 'var(--font-mono)' }}>{registers.interrupt.IM}</span>
+                  <div className={`flex items-center justify-between px-2 py-0.5 lg:py-1 ${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded`}>
+                    <span className={`text-[10px] lg:text-xs ${subtext}`} style={{ fontFamily: 'var(--font-mono)' }}>IM</span>
+                    <span className={`text-[10px] lg:text-xs font-bold ${isDark ? 'text-zinc-200' : 'text-gray-800'}`} style={{ fontFamily: 'var(--font-mono)' }}>{registers.interrupt.IM}</span>
+                  </div>
                 </div>
               </div>
             </div>
