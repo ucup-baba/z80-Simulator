@@ -111,7 +111,9 @@ export default function App() {
   const [showTools, setShowTools] = useState(false);
   const [showAIFeedback, setShowAIFeedback] = useState(false);
   const [showMateriDasar, setShowMateriDasar] = useState(false);
-  const [showManualBook, setShowManualBook] = useState(false);
+  const [showManualBook, setShowManualBook] = useState(() => {
+    return !localStorage.getItem('z80sim_manual_seen');
+  });
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -708,7 +710,10 @@ export default function App() {
       />
       <ManualBookModal
         isOpen={showManualBook}
-        onClose={() => setShowManualBook(false)}
+        onClose={() => {
+          setShowManualBook(false);
+          localStorage.setItem('z80sim_manual_seen', 'true');
+        }}
         onTryCode={(code) => handleCodeChange(code)}
       />
 
