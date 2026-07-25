@@ -13,21 +13,33 @@ function parseHexValue(value: string): number {
 
   // Remove 'H' suffix (Z-80 convention)
   if (cleaned.endsWith('H')) {
-    return parseInt(cleaned.slice(0, -1), 16);
+    const hexPart = cleaned.slice(0, -1);
+    if (!/^[0-9A-F]+$/i.test(hexPart)) {
+      return NaN;
+    }
+    return parseInt(hexPart, 16);
   }
 
   // Handle 0x prefix
   if (cleaned.startsWith('0X')) {
-    return parseInt(cleaned.slice(2), 16);
+    const hexPart = cleaned.slice(2);
+    if (!/^[0-9A-F]+$/i.test(hexPart)) {
+      return NaN;
+    }
+    return parseInt(hexPart, 16);
   }
 
-  // Try hex first, fall back to decimal
-  const hexValue = parseInt(cleaned, 16);
-  if (!isNaN(hexValue)) {
-    return hexValue;
+  // If pure decimal number (0-9)
+  if (/^\d+$/.test(cleaned)) {
+    return parseInt(cleaned, 10);
   }
 
-  return parseInt(cleaned, 10);
+  // If valid hex string
+  if (/^[0-9A-F]+$/i.test(cleaned)) {
+    return parseInt(cleaned, 16);
+  }
+
+  return NaN;
 }
 
 /**
@@ -370,12 +382,37 @@ export function parseInstruction(line: string, address: Address = 0, labels?: Ma
     address,
   };
 
+  // Check for invalid attached comma on mnemonic (e.g., "ADD, 02H")
+  if (/^[A-Za-z]+,/i.test(withoutComments)) {
+    throw new Error(`Invalid syntax: unexpected comma after mnemonic in "${withoutComments}"`);
+  }
+
   if (operands.length >= 1) {
     instruction.operand1 = parseOperand(operands[0], labels);
   }
 
   if (operands.length >= 2) {
     instruction.operand2 = parseOperand(operands[1], labels);
+  }
+
+  // Validate 8-bit instruction operand ranges
+  const is8BitAlu = ['ADD', 'ADC', 'SUB', 'SBC', 'AND', 'OR', 'XOR', 'CP'].includes(mnemonic);
+  if (is8BitAlu) {
+    const targetOp = (instruction.operand1 && (instruction.operand1.type === 'register8' || instruction.operand1.type === 'indirect')) ? instruction.operand2 : instruction.operand1;
+    if (targetOp && (targetOp.type === 'immediate8' || targetOp.type === 'immediate16')) {
+      if (targetOp.value > 0xFF) {
+        throw new Error(`Nilai operand 0x${targetOp.value.toString(16).toUpperCase()} (${targetOp.value}) melebihi batas 8-bit (0-255 / 00H-FFH) untuk instruksi ${mnemonic}`);
+      }
+    }
+  }
+
+  // Validate 8-bit LD instruction (e.g., LD A, 02DDDH)
+  if (mnemonic === 'LD' && instruction.operand1 && (instruction.operand1.type === 'register8' || (instruction.operand1.type === 'indirect' && instruction.operand1.value === 'HL'))) {
+    if (instruction.operand2 && (instruction.operand2.type === 'immediate8' || instruction.operand2.type === 'immediate16')) {
+      if (instruction.operand2.value > 0xFF) {
+        throw new Error(`Nilai operand 0x${instruction.operand2.value.toString(16).toUpperCase()} (${instruction.operand2.value}) melebihi batas 8-bit (0-255 / 00H-FFH) untuk instruksi LD 8-bit`);
+      }
+    }
   }
 
   return instruction;

@@ -562,6 +562,50 @@ function checkHardwareCompatibility(instructions: Instruction[]): AnalysisFeedba
   return results;
 }
 
+/**
+ * Rule 9: Operand Range Bounds
+ * Validates immediate values for 8-bit / 16-bit registers
+ */
+function checkOperandBounds(instructions: Instruction[]): AnalysisFeedback[] {
+  const results: AnalysisFeedback[] = [];
+
+  for (let i = 0; i < instructions.length; i++) {
+    const inst = instructions[i];
+    const lineNum = i + 1;
+    const m = inst.mnemonic;
+
+    const is8BitAlu = ['ADD', 'ADC', 'SUB', 'SBC', 'AND', 'OR', 'XOR', 'CP'].includes(m);
+    if (is8BitAlu) {
+      const targetOp = (inst.operand1 && (inst.operand1.type === 'register8' || inst.operand1.type === 'indirect')) ? inst.operand2 : inst.operand1;
+      if (targetOp && (targetOp.type === 'immediate8' || targetOp.type === 'immediate16')) {
+        if (targetOp.value > 0xFF) {
+          results.push(makeFeedback(
+            'error', 'register-misuse', lineNum,
+            '❌ Operand Melebihi Kapasitas 8-Bit',
+            `Instruksi ${m} di baris ${lineNum} menggunakan nilai 0x${targetOp.value.toString(16).toUpperCase()} (${targetOp.value}) yang melebihi batas 8-bit (0–255 / 00H–FFH).`,
+            'Gunakan nilai antara 00H hingga FFH (0–255 desimal).'
+          ));
+        }
+      }
+    }
+
+    if (m === 'LD' && inst.operand1 && (inst.operand1.type === 'register8' || (inst.operand1.type === 'indirect' && inst.operand1.value === 'HL'))) {
+      if (inst.operand2 && (inst.operand2.type === 'immediate8' || inst.operand2.type === 'immediate16')) {
+        if (inst.operand2.value > 0xFF) {
+          results.push(makeFeedback(
+            'error', 'register-misuse', lineNum,
+            '❌ Operand Melebihi Kapasitas 8-Bit',
+            `Instruksi LD ke register 8-bit di baris ${lineNum} menerima nilai 0x${inst.operand2.value.toString(16).toUpperCase()} (${inst.operand2.value}) yang melebihi batas 8-bit (0–255 / 00H–FFH).`,
+            'Gunakan nilai antara 00H hingga FFH (0–255 desimal).'
+          ));
+        }
+      }
+    }
+  }
+
+  return results;
+}
+
 // ─── Main Analyzer ──────────────────────────────────────────────────
 
 /**
@@ -587,6 +631,7 @@ export function analyzeProgram(instructions: Instruction[]): AnalysisResult {
     ...checkFlagAwareness(instructions),
     ...checkBestPractices(instructions),
     ...checkHardwareCompatibility(instructions),
+    ...checkOperandBounds(instructions),
   ];
 
   // Calculate quality score
