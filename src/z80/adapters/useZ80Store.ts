@@ -35,7 +35,7 @@ interface Z80Store {
 
   // Actions
   setSourceCode: (code: string) => void;
-  loadCode: () => void;
+  loadCode: () => boolean;
   stepInstruction: () => void;
   runProgram: () => void;
   resetCPU: () => void;
@@ -130,6 +130,7 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
           },
         ],
       });
+      return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to parse program';
 
@@ -145,6 +146,7 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
           },
         ],
       });
+      return false;
     }
   },
 

@@ -279,8 +279,14 @@ export default function App() {
 
   // Toast-enhanced actions
   const handleLoad = useCallback(() => {
-    loadCode();
-    if (isEnabled('toastNotifications')) addToast('Program assembled & loaded', 'success');
+    const success = loadCode();
+    if (isEnabled('toastNotifications')) {
+      if (success) {
+        addToast('Program assembled & loaded', 'success');
+      } else {
+        addToast('Failed to load — check your code', 'error');
+      }
+    }
   }, [loadCode, addToast, isEnabled]);
 
   const handleReset = useCallback(() => {
