@@ -23,10 +23,11 @@ import { ResizablePanel } from '../z80/presentation/ResizablePanel';
 import { AutocompleteDropdown, useAutocomplete } from '../z80/presentation/Autocomplete';
 import { AIFeedbackPanel } from '../z80/presentation/AIFeedbackPanel';
 import { MateriDasarPanel } from '../z80/presentation/MateriDasarPanel';
+import { ManualBookModal } from '../z80/presentation/ManualBookModal';
 import { PwaInstallPrompt } from '../z80/presentation/PwaInstallPrompt';
 import {
   Code, CircuitBoard, Database, List, Terminal, Eye, Layers, Activity,
-  Cpu, BookOpen, Sparkles, Settings2, Sun, Moon, LogIn, LogOut, MoreVertical
+  Cpu, BookOpen, Sparkles, Settings2, Sun, Moon, LogIn, LogOut, MoreVertical, FileText
 } from 'lucide-react';
 import { useAuthStore } from '../z80/adapters/useAuthStore';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -110,6 +111,7 @@ export default function App() {
   const [showTools, setShowTools] = useState(false);
   const [showAIFeedback, setShowAIFeedback] = useState(false);
   const [showMateriDasar, setShowMateriDasar] = useState(false);
+  const [showManualBook, setShowManualBook] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -521,6 +523,13 @@ export default function App() {
                 <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 
+              {/* Manual Book button */}
+              <button onClick={() => setShowManualBook(true)}
+                className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-emerald-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-emerald-600 border border-gray-200'}`}
+                title="Buku Panduan (Manual Book)">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+
               {/* Tools button */}
               <button onClick={() => setShowTools(true)}
                 className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-amber-600 border border-gray-200'}`}
@@ -568,6 +577,9 @@ export default function App() {
                 <div className={`absolute right-0 mt-2 w-48 rounded-xl shadow-xl border overflow-hidden z-50 ${isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-gray-200'}`}>
                   <button onClick={() => { setShowMateriDasar(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm ${isDark ? 'text-zinc-200 hover:bg-zinc-800' : 'text-gray-700 hover:bg-gray-50'}`}>
                     <BookOpen className="w-4 h-4 text-blue-500" /> Materi Dasar
+                  </button>
+                  <button onClick={() => { setShowManualBook(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm ${isDark ? 'text-zinc-200 hover:bg-zinc-800' : 'text-gray-700 hover:bg-gray-50'}`}>
+                    <FileText className="w-4 h-4 text-emerald-500" /> Buku Panduan (Manual)
                   </button>
                   <button onClick={() => { setShowTools(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm border-t ${isDark ? 'border-zinc-800 text-zinc-200 hover:bg-zinc-800' : 'border-gray-100 text-gray-700 hover:bg-gray-50'}`}>
                     <Settings2 className="w-4 h-4 text-amber-500" /> Tools & Features
@@ -686,6 +698,11 @@ export default function App() {
       <MateriDasarPanel 
         isOpen={showMateriDasar} 
         onClose={() => setShowMateriDasar(false)}
+        onTryCode={(code) => handleCodeChange(code)}
+      />
+      <ManualBookModal
+        isOpen={showManualBook}
+        onClose={() => setShowManualBook(false)}
         onTryCode={(code) => handleCodeChange(code)}
       />
 
