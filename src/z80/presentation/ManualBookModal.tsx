@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTheme } from './ThemeContext';
 import {
   FileText, X, Search, BookOpen, ChevronRight, Download, Play,
-  Cpu, Layers, CheckCircle2, AlertTriangle, Terminal, Sparkles, HelpCircle,
+  Cpu, Layers, CheckCircle2, AlertTriangle, Terminal, Sparkles, HelpCircle, Code2, Database, Binary, Info
 } from 'lucide-react';
 
 interface ManualBookModalProps {
@@ -51,7 +51,7 @@ export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClos
     {
       id: 'bab1',
       number: 'BAB I',
-      title: 'Pendahuluan',
+      title: 'Pendahuluan & Tujuan',
       icon: <BookOpen className="w-4 h-4 text-blue-500" />,
       content: (
         <div className="space-y-4">
@@ -61,7 +61,7 @@ export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClos
               Z-80 Simulator Core Logic
             </h4>
             <p className={`text-xs leading-relaxed ${textMuted}`}>
-              Perangkat lunak edukatif berbasis web yang mengemulasikan perilaku internal mikroprosesor Zilog Z-80 secara visual, interaktif, dan real-time. Dirancang untuk pembelajaran mandiri (*self-paced learning*) mata kuliah Sistem Mikroprosesor.
+              Perangkat lunak edukatif berbasis web yang mengemulasikan perilaku internal mikroprosesor Zilog Z-80 secara visual, interaktif, dan real-time. Dirancang untuk pembelajaran mandiri (<em>self-paced learning</em>) mata kuliah Sistem Mikroprosesor & Arsitektur Komputer.
             </p>
           </div>
 
@@ -70,19 +70,19 @@ export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClos
             <ul className={`text-xs space-y-2 ${textMuted}`}>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                <span><strong>Tanpa Instalasi (*Cross-Platform*)</strong>: Dijalankan langsung melalui browser di laptop, desktop, maupun smartphone/tablet.</span>
+                <span><strong>Cross-Platform & Tanpa Instalasi</strong>: Dijalankan langsung melalui browser tanpa memerlukan compiler eksternal.</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                <span><strong>Progressive Web App (PWA)</strong>: Dapat diinstal ke layar utama dan dijalankan dalam mode **Offline**.</span>
+                <span><strong>Progressive Web App (PWA)</strong>: Dapat diinstal ke layar utama dan dijalankan secara penuh dalam mode <strong>Offline</strong>.</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                <span><strong>Visualisasi Real-Time</strong>: Perubahan register dan memori ditunjukkan dengan animasi flash warna secara langsung.</span>
+                <span><strong>Visualisasi Hardware Real-Time</strong>: Perubahan nilai register, flag, dan memori RAM ditampilkan dengan efek animasi highlight warna.</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                <span><strong>AI Feedback Dua Tahap</strong>: Engine Linter lokal (skor 0-100) dan AI Deep Scan berbasis Google Gemini API.</span>
+                <span><strong>AI Feedback Dua Tahap</strong>: Linter Statis Lokal (Health Score 0–100) dan AI Deep Scan terintegrasi Google Gemini API.</span>
               </li>
             </ul>
           </div>
@@ -92,26 +92,49 @@ export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClos
     {
       id: 'bab2',
       number: 'BAB II',
-      title: 'Pengenalan Antarmuka',
+      title: 'Pengenalan Antarmuka UI',
       icon: <Cpu className="w-4 h-4 text-purple-500" />,
       content: (
         <div className="space-y-4">
-          <p className={`text-xs ${textMuted}`}>Antarmuka aplikasi dibagi menjadi 2 area utama: Area Kerja (Editor & Panel) dan Area Informasi (Register & Memori).</p>
+          <p className={`text-xs ${textMuted}`}>Antarmuka simulator dirancang secara modular dan intuitif, terbagi menjadi beberapa area kerja:</p>
           
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className={`p-3 rounded-lg border ${cardBg}`}>
-              <h5 className="text-xs font-bold text-blue-400 mb-1">⚡ Control Panel (Toolbar Bawah)</h5>
-              <p className={`text-xs ${textMuted}`}>Memuat tombol kontrol utama: <strong>Load</strong> (Compile & Load), <strong>Step</strong> (Eksekusi 1 baris), <strong>Run</strong> (Eksekusi penuh), <strong>Reset</strong> (Kembali ke 0000H), <strong>Contoh</strong> (Preset program), dan <strong>Speed Slider</strong>.</p>
+              <h5 className="text-xs font-bold text-blue-400 mb-1 flex items-center gap-1.5">
+                <Code2 className="w-3.5 h-3.5" /> Code Editor
+              </h5>
+              <p className={`text-xs ${textMuted}`}>Editor teks assembly dengan nomor baris, pewarnaan sintaks (syntax highlighting), penanda instruksi aktif, undo/redo, serta dukungan multi-tab.</p>
             </div>
 
             <div className={`p-3 rounded-lg border ${cardBg}`}>
-              <h5 className="text-xs font-bold text-emerald-400 mb-1">📝 Code Editor (Syntax Highlighting)</h5>
-              <p className={`text-xs ${textMuted}`}>Tempat menulis kode assembly Z-80. Dilengkapi pewarnaan otomatis, nomor baris, penanda baris eksekusi, Undo/Redo, dan multi-file tab.</p>
+              <h5 className="text-xs font-bold text-amber-400 mb-1 flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5" /> CPU Register & Flag
+              </h5>
+              <p className={`text-xs ${textMuted}`}>Menampilkan register 8-bit (A, B, C, D, E, H, L), register pasangan 16-bit (BC, DE, HL), register khusus (SP, PC), serta Flag status (Zero, Carry, Sign).</p>
             </div>
 
             <div className={`p-3 rounded-lg border ${cardBg}`}>
-              <h5 className="text-xs font-bold text-amber-400 mb-1">📊 Register Dashboard & Flag Viewer</h5>
-              <p className={`text-xs ${textMuted}`}>Menampilkan register A, B, C, D, E, H, L, F (Zero/Sign/Carry), SP, dan PC. Nilai register yang berubah akan **menyala kuning** selama 0,6 detik. Format dapat diubah ke HEX, DEC, atau BIN.</p>
+              <h5 className="text-xs font-bold text-emerald-400 mb-1 flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5" /> Memory Editor
+              </h5>
+              <p className={`text-xs ${textMuted}`}>Panel untuk menginspeksi dan mengubah langsung isi memori RAM (0000H–FFFFH) baik dalam format Hexadecimal maupun ASCII.</p>
+            </div>
+
+            <div className={`p-3 rounded-lg border ${cardBg}`}>
+              <h5 className="text-xs font-bold text-cyan-400 mb-1 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5" /> Stack & Watch Panel
+              </h5>
+              <p className={`text-xs ${textMuted}`}>Menampilkan struktur memori LIFO Stack yang ditunjuk oleh Stack Pointer (SP) serta daftar variabel/register yang sedang dipantau.</p>
+            </div>
+          </div>
+
+          <div className={`p-3 rounded-lg border ${cardBg}`}>
+            <h5 className="text-xs font-bold text-purple-400 mb-1">⚡ Control Toolbar (Navigasi Eksekusi)</h5>
+            <div className={`text-xs space-y-1 ${textMuted}`}>
+              <p>• <strong>Load (Ctrl+L)</strong>: Mengkompilasi program ke memori dan mengatur PC ke 0000H.</p>
+              <p>• <strong>Step (Ctrl+S)</strong>: Mengeksekusi tepat 1 instruksi untuk melacak pergerakan variabel.</p>
+              <p>• <strong>Run (Ctrl+R)</strong>: Jalankan eksekusi otomatis secara terus-menerus hingga ketemu HALT.</p>
+              <p>• <strong>Speed Slider</strong>: Mengatur kecepatan eksekusi simulasi (Lambat – Cepat).</p>
             </div>
           </div>
         </div>
@@ -120,32 +143,70 @@ export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClos
     {
       id: 'bab3',
       number: 'BAB III',
-      title: 'Langkah Penggunaan',
-      icon: <Layers className="w-4 h-4 text-emerald-500" />,
+      title: 'Aturan Sintaks Assembly',
+      icon: <Terminal className="w-4 h-4 text-emerald-500" />,
+      content: (
+        <div className="space-y-4">
+          <p className={`text-xs ${textMuted}`}>Untuk memastikan program assembly dapat dikompilasi tanpa error, perhatikan aturan sintaks berikut:</p>
+
+          <div className="space-y-3">
+            <div className={`p-3 rounded-lg border ${cardBg}`}>
+              <h5 className="text-xs font-bold text-emerald-400 mb-1">1. Format Angka Hexadecimal</h5>
+              <p className={`text-xs leading-relaxed ${textMuted}`}>
+                Angka hex diakhiri huruf <strong>H</strong> (contoh: <code>05H</code>, <code>12H</code>). 
+                <br />
+                <span className="text-amber-400 font-semibold">Aturan Penting:</span> Jika angka hex diawali dengan huruf (A–F), wajib ditambahi angka <code>0</code> di depannya. Contoh: <code>0FFH</code> (bukan <code>FFH</code>), <code>0ABH</code> (bukan <code>ABH</code>).
+              </p>
+            </div>
+
+            <div className={`p-3 rounded-lg border ${cardBg}`}>
+              <h5 className="text-xs font-bold text-blue-400 mb-1">2. Alamat Memori (Indirect Addressing)</h5>
+              <p className={`text-xs leading-relaxed ${textMuted}`}>
+                Pengaksesan lokasi memori menggunakan tanda kurung siku/biasa. Contoh: <code>(HL)</code> mengakses isi memori yang alamatnya tersimpan di register HL. <code>LD A, (0050H)</code> membaca isi RAM alamat 0050H.
+              </p>
+            </div>
+
+            <div className={`p-3 rounded-lg border ${cardBg}`}>
+              <h5 className="text-xs font-bold text-purple-400 mb-1">3. Label dan Komentar</h5>
+              <p className={`text-xs leading-relaxed ${textMuted}`}>
+                • <strong>Label</strong> diakhiri dengan titik dua (<code>LOOP:</code>). Digunakan sebagai target jump.
+                <br />
+                • <strong>Komentar</strong> diawali dengan titik koma (<code>; ini komentar</code>). Karakter setelah titik koma diabaikan oleh parser.
+              </p>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'bab4',
+      number: 'BAB IV',
+      title: 'Langkah Penggunaan & Evaluasi',
+      icon: <Layers className="w-4 h-4 text-cyan-500" />,
       content: (
         <div className="space-y-4">
           <ol className="space-y-3">
             <li className={`p-3 rounded-lg border ${cardBg} flex items-start gap-3`}>
               <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 font-bold text-xs flex items-center justify-center flex-shrink-0">1</span>
               <div>
-                <h5 className="text-xs font-bold mb-1">Tulis Kode Assembly</h5>
-                <p className={`text-xs ${textMuted}`}>Tulis perintah assembly pada Code Editor. Gunakan penanda <code>ORG 0000H</code> dan akhiri program dengan <code>HALT</code>.</p>
+                <h5 className="text-xs font-bold mb-1">Menulis & Memuat Kode</h5>
+                <p className={`text-xs ${textMuted}`}>Ketik program pada Code Editor atau pilih preset pada dropdown <strong>Contoh Program</strong>. Klik tombol <strong>⚡ Load</strong> untuk kompilasi.</p>
               </div>
             </li>
 
             <li className={`p-3 rounded-lg border ${cardBg} flex items-start gap-3`}>
               <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center flex-shrink-0">2</span>
               <div>
-                <h5 className="text-xs font-bold mb-1">Load Program (Ctrl + L)</h5>
-                <p className={`text-xs ${textMuted}`}>Klik <strong>⚡ Load</strong>. Program akan dikompilasi ke memori dan PC di-set ke alamat 0000H.</p>
+                <h5 className="text-xs font-bold mb-1">Simulasi & Penelusuran</h5>
+                <p className={`text-xs ${textMuted}`}>Gunakan <strong>Step</strong> untuk eksekusi per baris. amati perubahan nilai register yang berwarna kuning serta perubahan indikator Flag (Z, C, S).</p>
               </div>
             </li>
 
             <li className={`p-3 rounded-lg border ${cardBg} flex items-start gap-3`}>
               <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 font-bold text-xs flex items-center justify-center flex-shrink-0">3</span>
               <div>
-                <h5 className="text-xs font-bold mb-1">Eksekusi Step (Ctrl + S) / Run (Ctrl + R)</h5>
-                <p className={`text-xs ${textMuted}`}>Gunakan <strong>Step</strong> untuk mengamati pergerakan register per baris, atau <strong>Run</strong> untuk menjalankan otomatis.</p>
+                <h5 className="text-xs font-bold mb-1">Evaluasi Kode dengan AI Analyzer</h5>
+                <p className={`text-xs ${textMuted}`}>Buka panel <strong>AI Analyzer</strong> untuk melihat Health Score (0-100), analisis linter statis, atau klik <strong>Deep Scan (AI)</strong> untuk saran perbaikan tingkat lanjut dari Gemini API.</p>
               </div>
             </li>
           </ol>
@@ -153,82 +214,75 @@ export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClos
       )
     },
     {
-      id: 'bab4',
-      number: 'BAB IV',
-      title: 'Pendukung & AI Analyzer',
-      icon: <Sparkles className="w-4 h-4 text-amber-500" />,
-      content: (
-        <div className="space-y-4">
-          <div className={`p-3 rounded-lg border ${cardBg}`}>
-            <h5 className="text-xs font-bold text-purple-400 mb-1 flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" /> Engine Linter (Analisis Statis)
-            </h5>
-            <p className={`text-xs ${textMuted}`}>Mendeteksi secara instan kesalahan struktur seperti program tanpa `HALT`, potensi infinite loop, atau instruksi yang tidak pernah teresekusi (*Dead Code*), lengkap dengan Health Score 0–100.</p>
-          </div>
-
-          <div className={`p-3 rounded-lg border ${cardBg}`}>
-            <h5 className="text-xs font-bold text-blue-400 mb-1 flex items-center gap-1">
-              <HelpCircle className="w-3.5 h-3.5" /> AI Deep Scan (Google Gemini)
-            </h5>
-            <p className={`text-xs ${textMuted}`}>Klik <strong>Deep Scan (AI)</strong> pada panel AI Analyzer. Model kecerdasan buatan Gemini API akan menganalisis logika program Anda dan memberikan rekomendasi perbaikan pedagogis.</p>
-          </div>
-        </div>
-      )
-    },
-    {
       id: 'bab5',
       number: 'BAB V',
-      title: 'Modul Praktikum',
-      icon: <Terminal className="w-4 h-4 text-cyan-500" />,
+      title: 'Modul Praktikum Mandiri',
+      icon: <Binary className="w-4 h-4 text-emerald-500" />,
       content: (
         <div className="space-y-4">
-          <p className={`text-xs ${textMuted}`}>Pilih modul praktikum di bawah ini dan klik <strong>Coba Kode Ini</strong> untuk memuat langsung ke editor:</p>
+          <p className={`text-xs ${textMuted}`}>Klik <strong>Coba Kode Ini</strong> pada modul di bawah ini untuk memuat program praktikum secara instan ke editor:</p>
 
           {/* Praktikum 1 */}
           <div className={`p-3 rounded-xl border ${cardBg}`}>
             <div className="flex items-center justify-between mb-2">
-              <h5 className="text-xs font-bold text-emerald-400">Praktikum 1: Penjumlahan Aritmatika</h5>
+              <h5 className="text-xs font-bold text-emerald-400">Modul 1: Penjumlahan 8-Bit</h5>
               <button
-                onClick={() => handleTry(`ORG 0000H\n    LD A, 12H       ; A = 12H (18 desimal)\n    LD B, 24H       ; B = 24H (36 desimal)\n    ADD A, B        ; A = 12H + 24H = 36H\n    HALT`)}
+                onClick={() => handleTry(`ORG 0000H\n    LD A, 12H       ; Accumulator A = 12H\n    LD B, 24H       ; Register B = 24H\n    ADD A, B        ; A = 12H + 24H = 36H\n    HALT`)}
                 className="flex items-center gap-1 px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-medium transition-colors"
               >
                 <Play className="w-3 h-3" /> Coba Kode Ini
               </button>
             </div>
             <pre className={`p-2.5 rounded-lg text-[11px] font-mono border overflow-x-auto ${codeBg}`}>
-              {`ORG 0000H\n    LD A, 12H       ; A = 12H (18 desimal)\n    LD B, 24H       ; B = 24H (36 desimal)\n    ADD A, B        ; A = 12H + 24H = 36H\n    HALT`}
+              {`ORG 0000H\n    LD A, 12H       ; Accumulator A = 12H\n    LD B, 24H       ; Register B = 24H\n    ADD A, B        ; A = 12H + 24H = 36H\n    HALT`}
             </pre>
           </div>
 
           {/* Praktikum 2 */}
           <div className={`p-3 rounded-xl border ${cardBg}`}>
             <div className="flex items-center justify-between mb-2">
-              <h5 className="text-xs font-bold text-amber-400">Praktikum 2: Deteksi Carry Flag & Overflow</h5>
+              <h5 className="text-xs font-bold text-amber-400">Modul 2: Carry Flag & Overflow Trap</h5>
               <button
-                onClick={() => handleTry(`ORG 0000H\n    LD A, 0FFH      ; A = 255 (maksimal 8-bit)\n    ADD A, 01H      ; A = 00H, Carry Flag = 1!\n    HALT`)}
+                onClick={() => handleTry(`ORG 0000H\n    LD A, 0FFH      ; A = 255 (Batas 8-bit)\n    ADD A, 01H      ; Overflow -> A = 00H, Carry Flag = 1!\n    HALT`)}
                 className="flex items-center gap-1 px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-medium transition-colors"
               >
                 <Play className="w-3 h-3" /> Coba Kode Ini
               </button>
             </div>
             <pre className={`p-2.5 rounded-lg text-[11px] font-mono border overflow-x-auto ${codeBg}`}>
-              {`ORG 0000H\n    LD A, 0FFH      ; A = 255 (maksimal 8-bit)\n    ADD A, 01H      ; A = 00H, Carry Flag = 1!\n    HALT`}
+              {`ORG 0000H\n    LD A, 0FFH      ; A = 255 (Batas 8-bit)\n    ADD A, 01H      ; Overflow -> A = 00H, Carry Flag = 1!\n    HALT`}
             </pre>
           </div>
 
           {/* Praktikum 3 */}
           <div className={`p-3 rounded-xl border ${cardBg}`}>
             <div className="flex items-center justify-between mb-2">
-              <h5 className="text-xs font-bold text-purple-400">Praktikum 3: Looping & Zero Flag</h5>
+              <h5 className="text-xs font-bold text-purple-400">Modul 3: Looping & Zero Flag</h5>
               <button
-                onClick={() => handleTry(`ORG 0000H\n    LD B, 03H       ; Counter = 3\nLOOP:\n    DEC B           ; B--\n    JP NZ, LOOP     ; Ulangi jika B != 0\n    HALT`)}
+                onClick={() => handleTry(`ORG 0000H\n    LD B, 05H       ; Counter = 5\nLOOP:\n    DEC B           ; Kurangi B\n    JP NZ, LOOP     ; Ulangi jika B != 0 (Zero Flag = 0)\n    HALT`)}
                 className="flex items-center gap-1 px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-medium transition-colors"
               >
                 <Play className="w-3 h-3" /> Coba Kode Ini
               </button>
             </div>
             <pre className={`p-2.5 rounded-lg text-[11px] font-mono border overflow-x-auto ${codeBg}`}>
-              {`ORG 0000H\n    LD B, 03H       ; Counter = 3\nLOOP:\n    DEC B           ; B--\n    JP NZ, LOOP     ; Ulangi jika B != 0\n    HALT`}
+              {`ORG 0000H\n    LD B, 05H       ; Counter = 5\nLOOP:\n    DEC B           ; Kurangi B\n    JP NZ, LOOP     ; Ulangi jika B != 0 (Zero Flag = 0)\n    HALT`}
+            </pre>
+          </div>
+
+          {/* Praktikum 4 */}
+          <div className={`p-3 rounded-xl border ${cardBg}`}>
+            <div className="flex items-center justify-between mb-2">
+              <h5 className="text-xs font-bold text-cyan-400">Modul 4: Operasi Logika AND Masking</h5>
+              <button
+                onClick={() => handleTry(`ORG 0000H\n    LD A, 3FH       ; A = 00111111B\n    AND 0FH         ; Isolasi 4 bit bawah -> A = 0FH\n    HALT`)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-medium transition-colors"
+              >
+                <Play className="w-3 h-3" /> Coba Kode Ini
+              </button>
+            </div>
+            <pre className={`p-2.5 rounded-lg text-[11px] font-mono border overflow-x-auto ${codeBg}`}>
+              {`ORG 0000H\n    LD A, 3FH       ; A = 00111111B\n    AND 0FH         ; Isolasi 4 bit bawah -> A = 0FH\n    HALT`}
             </pre>
           </div>
         </div>
@@ -237,18 +291,23 @@ export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClos
     {
       id: 'bab6',
       number: 'BAB VI',
-      title: 'Troubleshooting & Error',
+      title: 'Troubleshooting & Pesan Error',
       icon: <AlertTriangle className="w-4 h-4 text-red-500" />,
       content: (
         <div className="space-y-4">
           <div className={`p-3 rounded-lg border ${cardBg}`}>
-            <h5 className="text-xs font-bold text-red-400 mb-1">❌ Parse Error (Kesalahan Sintaks)</h5>
-            <p className={`text-xs ${textMuted}`}>Terjadi jika ada salah eja perintah (misal `LOD` bukannya `LD`), nilai hex diawali huruf tanpa angka `0` (gunakan `0FFH`), atau lupa koma pemisah.</p>
+            <h5 className="text-xs font-bold text-red-400 mb-1">❌ Parse error / Invalid operand</h5>
+            <p className={`text-xs ${textMuted}`}>Disebabkan oleh kesalahan penulisan instruksi, nilai operand 8-bit melebihi 255 (<code>0FFH</code>), atau penulisan angka hex tanpa awalan <code>0</code> jika diawali huruf (misal <code>ABH</code> harus ditulis <code>0ABH</code>).</p>
           </div>
 
           <div className={`p-3 rounded-lg border ${cardBg}`}>
-            <h5 className="text-xs font-bold text-amber-400 mb-1">🔄 Infinite Loop (Loop Tanpa Henti)</h5>
-            <p className={`text-xs ${textMuted}`}>Jika program tidak pernah berhenti saat di-Run, periksa syarat perulangan `JP NZ` atau pastikan menyertakan perintah `HALT` di akhir program.</p>
+            <h5 className="text-xs font-bold text-amber-400 mb-1">🔄 Infinite Loop (Program Menggantung)</h5>
+            <p className={`text-xs ${textMuted}`}>Terjadi jika instruksi <code>JP</code> melompat terus tanpa batas, atau tidak ada instruksi <code>HALT</code> di akhir program. Gunakan tombol <strong>Reset</strong> untuk menghentikan.</p>
+          </div>
+
+          <div className={`p-3 rounded-lg border ${cardBg}`}>
+            <h5 className="text-xs font-bold text-blue-400 mb-1">⚠️ No Program Loaded</h5>
+            <p className={`text-xs ${textMuted}`}>Muncul saat menekan tombol <strong>Step/Run</strong> tetapi belum pernah menekan tombol <strong>Load</strong> atau proses Load sebelumnya mengalami error.</p>
           </div>
         </div>
       )
@@ -276,7 +335,7 @@ export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClos
                 Buku Panduan Penggunaan (Manual Book)
                 <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${highlightBadge}`}>Z-80 Sim</span>
               </h3>
-              <p className={`text-xs ${textMuted}`}>Panduan Operasional & Modul Praktikum Skripsi</p>
+              <p className={`text-xs ${textMuted}`}>Panduan Operasional, Aturan Sintaks & Modul Praktikum Skripsi</p>
             </div>
           </div>
 
