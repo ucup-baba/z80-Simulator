@@ -668,6 +668,7 @@ export default function App() {
           sourceCode={undoRedo.currentValue} onImportCode={handleImport}
           speed={speed} onSpeedChange={setSpeed}
           onShowShortcuts={() => setShowShortcuts(true)}
+          onLoadExample={(id) => store.loadExampleProgram(id)}
         />
       </div>
 
@@ -684,7 +685,8 @@ export default function App() {
       />
       <MateriDasarPanel 
         isOpen={showMateriDasar} 
-        onClose={() => setShowMateriDasar(false)} 
+        onClose={() => setShowMateriDasar(false)}
+        onTryCode={(code) => handleCodeChange(code)}
       />
 
       {/* ─── Autocomplete Dropdown (PC only) ─── */}

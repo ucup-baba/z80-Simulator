@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import { examplePrograms } from '../data/examplePrograms';
 import type { CPUState } from '../domain';
 import type { Program } from '../usecases';
 import type { AnalysisResult } from '../usecases';
@@ -41,6 +42,7 @@ interface Z80Store {
   clearLog: () => void;
   writeMemory: (address: number, value: number) => void;
   analyzeCode: () => void;
+  loadExampleProgram: (id: string) => void;
 }
 
 const DEFAULT_CODE = `; ========================================================
@@ -66,7 +68,7 @@ ORG 0000H
     DEC B           
 
 LOOP_FIB:
-    LD A, D         ; Pindahkan nilai D ke Akumulator (A)
+    LD A, D         ; Pindahkan nilai D ke Accumulator (A)
     ADD A, E        ; A = A + E (Proses Penjumlahan Fibonacci)
 
     ; --- JEBAKAN FLAG ---
@@ -318,5 +320,26 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
     }
     const result = analyzeProgram(program.instructions);
     set({ analysisResult: result });
+  },
+
+  // Load example program by ID
+  loadExampleProgram: (id: string) => {
+    const example = examplePrograms.find((p) => p.id === id);
+    if (!example) return;
+
+    set({
+      sourceCode: example.code,
+      program: null,
+      cpu: createCPUState(),
+      parseError: null,
+      analysisResult: null,
+      executionLog: [
+        {
+          timestamp: Date.now(),
+          message: `Contoh program "${example.title}" berhasil dimuat.`,
+          type: 'success',
+        },
+      ],
+    });
   },
 }));

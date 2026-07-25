@@ -3,9 +3,10 @@
  * Execution controls with export/import and speed slider
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTheme } from './ThemeContext';
-import { Zap, StepForward, Play, Download, Upload, RotateCcw, Gauge } from 'lucide-react';
+import { Zap, StepForward, Play, Download, Upload, RotateCcw, Gauge, BookOpenCheck, ChevronDown } from 'lucide-react';
+import { examplePrograms } from '../data/examplePrograms';
 
 interface ControlPanelProps {
   onLoad: () => void;
@@ -23,6 +24,8 @@ interface ControlPanelProps {
   onSpeedChange?: (speed: number) => void;
   // Keyboard shortcuts modal
   onShowShortcuts?: () => void;
+  // Example programs
+  onLoadExample?: (id: string) => void;
 }
 
 interface ControlButtonProps {
@@ -76,10 +79,11 @@ const ControlButton: React.FC<ControlButtonProps> = ({
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   onLoad, onStep, onRun, onReset, isRunning, hasProgram, halted = false,
-  sourceCode = '', onImportCode, speed = 50, onSpeedChange, onShowShortcuts,
+  sourceCode = '', onImportCode, speed = 50, onSpeedChange, onShowShortcuts, onLoadExample,
 }) => {
   const { isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showExamples, setShowExamples] = useState(false);
 
   const bg = isDark ? 'bg-zinc-900/95 backdrop-blur-xl' : 'bg-white/95 backdrop-blur-xl';
   const border = isDark ? 'border-zinc-700/50' : 'border-gray-200';
@@ -188,6 +192,71 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           icon={<Upload className="w-4 h-4" />}
           label="Import"
         />
+
+        {/* Example Program Dropdown */}
+        {onLoadExample && (
+          <div className="relative">
+            <button
+              onClick={() => setShowExamples(!showExamples)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border transition-all duration-200 hover:scale-[1.02] active:scale-95 text-xs font-medium ${
+                isDark
+                  ? 'bg-transparent hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-transparent'
+                  : 'bg-transparent hover:bg-gray-100 text-gray-500 hover:text-gray-700 border-transparent'
+              }`}
+              title="Muat contoh program"
+            >
+              <BookOpenCheck className="w-4 h-4" />
+              <span className="hidden sm:inline">Contoh</span>
+              <ChevronDown className={`w-3 h-3 transition-transform ${showExamples ? 'rotate-180' : ''}`} />
+            </button>
+            {showExamples && (
+              <>
+                <div className="fixed inset-0 z-[70]" onClick={() => setShowExamples(false)} />
+                <div className={`absolute bottom-full left-0 mb-2 w-72 rounded-xl border shadow-2xl z-[71] overflow-hidden ${
+                  isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-gray-200'
+                }`}>
+                  <div className={`px-3 py-2 border-b text-xs font-semibold ${
+                    isDark ? 'border-zinc-800 text-zinc-300' : 'border-gray-100 text-gray-600'
+                  }`}>
+                    📚 Contoh Program
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {examplePrograms.map((prog) => (
+                      <button
+                        key={prog.id}
+                        onClick={() => {
+                          onLoadExample(prog.id);
+                          setShowExamples(false);
+                        }}
+                        className={`w-full text-left px-3 py-2.5 transition-colors ${
+                          isDark ? 'hover:bg-zinc-800' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-semibold ${
+                            isDark ? 'text-zinc-100' : 'text-gray-900'
+                          }`}>{prog.title}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                            prog.difficulty === 'mudah'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : prog.difficulty === 'sedang'
+                              ? 'bg-amber-500/20 text-amber-400'
+                              : 'bg-red-500/20 text-red-400'
+                          }`}>
+                            {prog.difficulty}
+                          </span>
+                        </div>
+                        <p className={`text-[11px] mt-0.5 leading-snug ${
+                          isDark ? 'text-zinc-500' : 'text-gray-400'
+                        }`}>{prog.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Speed Slider — hidden on very small screens */}
         <div className={`hidden sm:flex items-center gap-2 ml-2 px-3 py-1.5 rounded-lg ${isDark ? 'bg-zinc-800' : 'bg-gray-100'}`}>
