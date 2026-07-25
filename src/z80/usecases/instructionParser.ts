@@ -382,11 +382,6 @@ export function parseInstruction(line: string, address: Address = 0, labels?: Ma
     address,
   };
 
-  // Check for invalid attached comma on mnemonic (e.g., "ADD, 02H")
-  if (/^[A-Za-z]+,/i.test(withoutComments)) {
-    throw new Error(`Invalid syntax: unexpected comma after mnemonic in "${withoutComments}"`);
-  }
-
   if (operands.length >= 1) {
     instruction.operand1 = parseOperand(operands[0], labels);
   }
