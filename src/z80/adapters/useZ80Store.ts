@@ -134,6 +134,8 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
       const errorMessage = error instanceof Error ? error.message : 'Failed to parse program';
 
       set({
+        program: null,
+        cpu: createCPUState(),
         parseError: errorMessage,
         executionLog: [
           {
