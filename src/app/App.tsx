@@ -24,10 +24,23 @@ import { AutocompleteDropdown, useAutocomplete } from '../z80/presentation/Autoc
 import { AIFeedbackPanel } from '../z80/presentation/AIFeedbackPanel';
 import { MateriDasarPanel } from '../z80/presentation/MateriDasarPanel';
 import { ManualBookModal } from '../z80/presentation/ManualBookModal';
+import { ValidationModal } from '../z80/presentation/ValidationModal';
+import { ValidationWelcomeModal } from '../z80/presentation/ValidationWelcomeModal';
+import { ValidationDashboard } from '../z80/presentation/ValidationDashboard';
+import { VALIDATOR_PROFILES, ValidatorPresetProfile } from '../z80/data/validationInstrumentsData';
 import { PwaInstallPrompt } from '../z80/presentation/PwaInstallPrompt';
+import { examplePrograms } from '../z80/data/examplePrograms';
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from './components/ui/context-menu';
 import {
   Code, CircuitBoard, Database, List, Terminal, Eye, Layers, Activity,
-  Cpu, BookOpen, Sparkles, Settings2, Sun, Moon, LogIn, LogOut, MoreVertical, FileText
+  Cpu, BookOpen, Sparkles, Settings2, Sun, Moon, LogIn, LogOut, MoreVertical, FileText,
+  Edit3, Download, Copy, Trash2, FileCheck2
 } from 'lucide-react';
 import { useAuthStore } from '../z80/adapters/useAuthStore';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -94,8 +107,8 @@ interface FileTab {
 
 export default function App() {
   const store = useZ80Store();
-  const { cpu, program, executionLog, isRunning, parseError,
-    loadCode, stepInstruction, runProgram, resetCPU, clearLog, writeMemory,
+  const { cpu, program, executionLog, isRunning, parseError, isCodeDirty,
+    loadCode, stepInstruction, runProgram, pauseProgram, setSpeed: setStoreSpeed, resetCPU, clearLog, writeMemory,
     analyzeCode, analysisResult } = store;
 
   const { isDark, toggleTheme } = useTheme();
@@ -111,11 +124,49 @@ export default function App() {
   const [showTools, setShowTools] = useState(false);
   const [showAIFeedback, setShowAIFeedback] = useState(false);
   const [showMateriDasar, setShowMateriDasar] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationType, setValidationType] = useState<'materi' | 'media' | 'mahasiswa' | 'dosen'>('materi');
+  const [validationViewMode, setValidationViewMode] = useState<'split' | 'minimized' | 'modal'>('split');
+  const [validationPanelWidth, setValidationPanelWidth] = useState<number>(480);
+  const [presetProfile, setPresetProfile] = useState<ValidatorPresetProfile | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(false);
+  const [isValidationMode, setIsValidationMode] = useState<boolean>(false);
+  const [showDashboard, setShowDashboard] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.has('hasil') || window.location.search.toLowerCase().includes('hasil');
+    }
+    return false;
+  });
+
   const [showManualBook, setShowManualBook] = useState(() => {
     return !localStorage.getItem('z80sim_manual_seen');
   });
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Check URL query parameters for direct validation links (e.g. ?validasi=materi1 or ?hasil)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('hasil') || window.location.search.toLowerCase().includes('hasil')) {
+      setShowDashboard(true);
+      return;
+    }
+
+    const validasiParam = params.get('validasi')?.toLowerCase();
+    if (validasiParam && VALIDATOR_PROFILES[validasiParam]) {
+      const profile = VALIDATOR_PROFILES[validasiParam];
+      setPresetProfile(profile);
+      setValidationType(profile.type);
+      setIsValidationMode(true);
+      setShowWelcomeModal(true);
+      setShowValidationModal(true);
+    } else if (validasiParam && ['materi', 'media', 'mahasiswa', 'dosen'].includes(validasiParam)) {
+      setValidationType(validasiParam as any);
+      setIsValidationMode(true);
+      setShowValidationModal(true);
+    }
+  }, []);
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -266,6 +317,76 @@ export default function App() {
     }
   }, [fileTabs, store, undoRedo]);
 
+  // Multi-file tab editing state
+  const [editingTabId, setEditingTabId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string>('');
+
+  // Multi-file: start rename tab
+  const startRenameTab = useCallback((id: string, currentName: string) => {
+    setEditingTabId(id);
+    setEditingName(currentName);
+  }, []);
+
+  // Multi-file: finish rename tab
+  const saveRenameTab = useCallback((id: string) => {
+    if (!editingName.trim()) {
+      setEditingTabId(null);
+      return;
+    }
+    let formatted = editingName.trim();
+    if (!formatted.toLowerCase().endsWith('.asm') && !formatted.toLowerCase().endsWith('.z80') && !formatted.toLowerCase().endsWith('.txt')) {
+      formatted += '.asm';
+    }
+    setFileTabs(prev => prev.map(f => f.id === id ? { ...f, name: formatted } : f));
+    setEditingTabId(null);
+    addToast(`Renamed to ${formatted}`, 'info', 2000);
+  }, [editingName, addToast]);
+
+  // Multi-file: export single tab
+  const exportFileTab = useCallback((id: string) => {
+    const tab = fileTabs.find(f => f.id === id);
+    if (!tab) return;
+    if (!tab.content.trim()) {
+      addToast('File is empty', 'warning', 2000);
+      return;
+    }
+    const blob = new Blob([tab.content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = tab.name.endsWith('.asm') ? tab.name : `${tab.name}.asm`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addToast(`Exported ${tab.name}`, 'success', 2000);
+  }, [fileTabs, addToast]);
+
+  // Multi-file: duplicate tab
+  const duplicateFileTab = useCallback((id: string) => {
+    const tab = fileTabs.find(f => f.id === id);
+    if (!tab) return;
+    const newId = Date.now().toString(36);
+    const baseName = tab.name.replace(/\.(asm|z80|txt)$/i, '');
+    const ext = tab.name.match(/\.(asm|z80|txt)$/i)?.[0] || '.asm';
+    const newName = `${baseName}_copy${ext}`;
+    const newTab: FileTab = { id: newId, name: newName, content: tab.content };
+    setFileTabs(prev => [...prev, newTab]);
+    setActiveFileId(newId);
+    store.setSourceCode(tab.content);
+    undoRedo.setValue(tab.content);
+    addToast(`Duplicated: ${newName}`, 'info', 2000);
+  }, [fileTabs, store, undoRedo, addToast]);
+
+  // Multi-file: close other tabs
+  const closeOtherFileTabs = useCallback((id: string) => {
+    const tab = fileTabs.find(f => f.id === id);
+    if (!tab) return;
+    setFileTabs([tab]);
+    setActiveFileId(tab.id);
+    store.setSourceCode(tab.content);
+    undoRedo.setValue(tab.content);
+    addToast('Closed other tabs', 'info', 2000);
+  }, [fileTabs, store, undoRedo, addToast]);
+
   // Multi-file: close tab
   const closeFileTab = useCallback((id: string) => {
     if (fileTabs.length <= 1) return;
@@ -281,6 +402,7 @@ export default function App() {
 
   // Toast-enhanced actions
   const handleLoad = useCallback(() => {
+    store.setSourceCode(undoRedo.currentValue);
     const success = loadCode();
     if (isEnabled('toastNotifications')) {
       if (success) {
@@ -289,7 +411,7 @@ export default function App() {
         addToast('Failed to load — check your code', 'error');
       }
     }
-  }, [loadCode, addToast, isEnabled]);
+  }, [loadCode, addToast, isEnabled, store, undoRedo.currentValue]);
 
   const handleReset = useCallback(() => {
     resetCPU();
@@ -300,6 +422,14 @@ export default function App() {
     handleCodeChange(code);
     if (isEnabled('toastNotifications')) addToast('File imported successfully', 'success');
   }, [handleCodeChange, addToast, isEnabled]);
+
+  const handleLoadExample = useCallback((id: string) => {
+    const example = examplePrograms.find(p => p.id === id);
+    if (example) {
+      handleCodeChange(example.code);
+      store.loadExampleProgram(id);
+    }
+  }, [handleCodeChange, store]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -313,7 +443,7 @@ export default function App() {
         switch (e.key.toLowerCase()) {
           case 'l': e.preventDefault(); handleLoad(); break;
           case 's': e.preventDefault(); if (program && !cpu.halted && !isRunning) stepInstruction(); break;
-          case 'r': e.preventDefault(); if (program && !cpu.halted && !isRunning) runProgram(); break;
+          case 'r': e.preventDefault(); if (program && !cpu.halted) { if (isRunning) pauseProgram(); else runProgram(speed); } break;
           case 'z':
             if (isEnabled('undoRedo')) {
               e.preventDefault();
@@ -374,29 +504,114 @@ export default function App() {
         <>
           {/* Multi-file tab bar */}
           {isEnabled('multiFileTabs') && (
-            <div className={`flex-shrink-0 flex items-center gap-0 px-1 py-1 ${fileTabBg} border-b ${border} overflow-x-auto`}>
-              {fileTabs.map((f) => (
-                <div
-                  key={f.id}
-                  className={`flex items-center gap-1 px-3 py-1.5 text-xs cursor-pointer whitespace-nowrap transition-colors ${
-                    activeFileId === f.id ? fileTabActive : fileTabInactive
-                  }`}
-                  onClick={() => switchFileTab(f.id)}
-                >
-                  <span>{f.name}</span>
-                  {fileTabs.length > 1 && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); closeFileTab(f.id); }}
-                      className="ml-1 opacity-50 hover:opacity-100"
-                    >×</button>
-                  )}
-                </div>
-              ))}
+            <div className={`flex-shrink-0 flex items-center gap-0 px-1 py-1 ${fileTabBg} border-b ${border} overflow-x-auto select-none`}>
+              {fileTabs.map((f) => {
+                const isActive = activeFileId === f.id;
+                const isEditing = editingTabId === f.id;
+                return (
+                  <ContextMenu key={f.id}>
+                    <ContextMenuTrigger asChild>
+                      <div
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs cursor-pointer whitespace-nowrap transition-colors rounded-t-md ${
+                          isActive ? fileTabActive : fileTabInactive
+                        }`}
+                        onClick={() => switchFileTab(f.id)}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          startRenameTab(f.id, f.name);
+                        }}
+                        title="Klik 2x untuk ubah nama, klik kanan untuk opsi menu"
+                      >
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveRenameTab(f.id);
+                              if (e.key === 'Escape') setEditingTabId(null);
+                            }}
+                            onBlur={() => saveRenameTab(f.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            autoFocus
+                            className={`px-1 py-0.5 text-xs border rounded outline-none w-28 font-mono ${
+                              isDark ? 'bg-zinc-800 text-zinc-100 border-blue-500' : 'bg-white text-gray-900 border-blue-500'
+                            }`}
+                          />
+                        ) : (
+                          <span>{f.name}</span>
+                        )}
+
+                        {fileTabs.length > 1 && !isEditing && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); closeFileTab(f.id); }}
+                            className="ml-1 opacity-40 hover:opacity-100 hover:text-red-500 transition-opacity p-0.5 rounded"
+                            title="Close tab"
+                          >×</button>
+                        )}
+                      </div>
+                    </ContextMenuTrigger>
+
+                    <ContextMenuContent className={`w-48 text-xs ${isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-200' : 'bg-white border-gray-200 text-gray-800'}`}>
+                      <ContextMenuItem
+                        onClick={() => startRenameTab(f.id, f.name)}
+                        className="flex items-center gap-2 cursor-pointer text-xs"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Rename (Edit Nama)</span>
+                        <span className="ml-auto text-[10px] opacity-60">2x Click</span>
+                      </ContextMenuItem>
+
+                      <ContextMenuItem
+                        onClick={() => exportFileTab(f.id)}
+                        disabled={!f.content.trim()}
+                        className="flex items-center gap-2 cursor-pointer text-xs disabled:opacity-40"
+                      >
+                        <Download className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Export (.asm)</span>
+                      </ContextMenuItem>
+
+                      <ContextMenuItem
+                        onClick={() => duplicateFileTab(f.id)}
+                        className="flex items-center gap-2 cursor-pointer text-xs"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Duplicate</span>
+                      </ContextMenuItem>
+
+                      <ContextMenuSeparator />
+
+                      <ContextMenuItem
+                        onClick={() => closeFileTab(f.id)}
+                        disabled={fileTabs.length <= 1}
+                        className="flex items-center gap-2 cursor-pointer text-xs text-red-400 focus:text-red-400 disabled:opacity-40"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Close Tab</span>
+                      </ContextMenuItem>
+
+                      {fileTabs.length > 1 && (
+                        <ContextMenuItem
+                          onClick={() => closeOtherFileTabs(f.id)}
+                          className="flex items-center gap-2 cursor-pointer text-xs text-amber-400 focus:text-amber-400"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Close Others</span>
+                        </ContextMenuItem>
+                      )}
+                    </ContextMenuContent>
+                  </ContextMenu>
+                );
+              })}
               <button
                 onClick={addFileTab}
-                className={`px-2 py-1.5 text-xs ${isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-gray-400 hover:text-gray-600'} transition-colors`}
-                title="New file"
-              >+</button>
+                className={`px-2.5 py-1.5 text-xs rounded hover:bg-zinc-800/40 transition-colors flex items-center gap-1 font-medium ${
+                  isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-gray-400 hover:text-gray-600'
+                }`}
+                title="New file tab"
+              >
+                +
+              </button>
             </div>
           )}
           <div className={`flex-1 min-h-0 flex flex-col relative`}>
@@ -475,14 +690,20 @@ export default function App() {
     </div>
   );
 
+  if (showDashboard) {
+    return <ValidationDashboard onBackToSimulator={() => setShowDashboard(false)} />;
+  }
+
   return (
-    <div className={`fixed inset-0 ${bg} ${text} flex flex-col overflow-hidden transition-colors duration-300`}>
-      {/* ─── Header ─── */}
-      <header className={`relative z-50 flex-shrink-0 px-3 sm:px-6 py-2 sm:py-3 ${headerBg} border-b shadow-lg transition-colors duration-300`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
-              <Cpu className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+    <div className={`fixed inset-0 ${bg} ${text} flex flex-row overflow-hidden transition-colors duration-300`}>
+      {/* ─── Main App Left Side ─── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
+        {/* ─── Header ─── */}
+        <header className={`relative z-50 flex-shrink-0 px-3 sm:px-6 py-2 sm:py-3 ${headerBg} border-b shadow-lg transition-colors duration-300`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
+                <Cpu className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
             </div>
             <div className="min-w-0">
               <h1 className="text-sm sm:text-lg font-bold tracking-tight truncate" style={{ fontFamily: 'var(--font-sans)' }}>Z-80 CPU Simulator</h1>
@@ -530,6 +751,15 @@ export default function App() {
                 title="Materi Dasar Z-80">
                 <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
+
+              {/* Validation Form button (Only visible on preset validation links) */}
+              {isValidationMode && (
+                <button onClick={() => setShowValidationModal(true)}
+                  className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-purple-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-purple-600 border border-gray-200'}`}
+                  title="Instrumen Validasi Penelitian R&D (Cetak PDF)">
+                  <FileCheck2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              )}
 
               {/* Manual Book button */}
               <button onClick={() => setShowManualBook(true)}
@@ -583,7 +813,10 @@ export default function App() {
               
               {showMobileMenu && (
                 <div className={`absolute right-0 mt-2 w-48 rounded-xl shadow-xl border overflow-hidden z-50 ${isDark ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-gray-200'}`}>
-                  <button onClick={() => { setShowMateriDasar(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm ${isDark ? 'text-zinc-200 hover:bg-zinc-800' : 'text-gray-700 hover:bg-gray-50'}`}>
+                  <button onClick={() => { setShowValidationModal(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm ${isDark ? 'text-zinc-200 hover:bg-zinc-800' : 'text-gray-700 hover:bg-gray-50'}`}>
+                    <FileCheck2 className="w-4 h-4 text-purple-400" /> Form Validasi (R&amp;D)
+                  </button>
+                  <button onClick={() => { setShowMateriDasar(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm border-t ${isDark ? 'border-zinc-800 text-zinc-200 hover:bg-zinc-800' : 'border-gray-100 text-gray-700 hover:bg-gray-50'}`}>
                     <BookOpen className="w-4 h-4 text-blue-500" /> Materi Dasar
                   </button>
                   <button onClick={() => { setShowManualBook(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm ${isDark ? 'text-zinc-200 hover:bg-zinc-800' : 'text-gray-700 hover:bg-gray-50'}`}>
@@ -683,12 +916,15 @@ export default function App() {
       {/* ─── Control Panel ─── */}
       <div className="flex-shrink-0">
         <ControlPanel
-          onLoad={handleLoad} onStep={stepInstruction} onRun={runProgram} onReset={handleReset}
-          isRunning={isRunning} hasProgram={program !== null} halted={cpu.halted}
+          onLoad={handleLoad} onStep={stepInstruction} onRun={() => runProgram(speed)} onPause={pauseProgram} onReset={handleReset}
+          isRunning={isRunning} hasProgram={program !== null} isCodeDirty={store.isCodeDirty} halted={cpu.halted}
           sourceCode={undoRedo.currentValue} onImportCode={handleImport}
-          speed={speed} onSpeedChange={setSpeed}
+          speed={speed} onSpeedChange={(newSpeed) => {
+            setSpeed(newSpeed);
+            setStoreSpeed(newSpeed);
+          }}
           onShowShortcuts={() => setShowShortcuts(true)}
-          onLoadExample={(id) => store.loadExampleProgram(id)}
+          onLoadExample={handleLoadExample}
         />
       </div>
 
@@ -701,6 +937,7 @@ export default function App() {
         analysisResult={analysisResult}
         onAnalyze={analyzeCode}
         hasProgram={program !== null}
+        isCodeDirty={isCodeDirty}
         sourceCode={store.sourceCode}
       />
       <MateriDasarPanel 
@@ -716,7 +953,6 @@ export default function App() {
         }}
         onTryCode={(code) => handleCodeChange(code)}
       />
-
       {/* ─── Autocomplete Dropdown (PC only) ─── */}
       {isEnabled('autocomplete') && (
         <AutocompleteDropdown
@@ -738,6 +974,57 @@ export default function App() {
 
       {/* ─── PWA Install Banner ─── */}
       <PwaInstallPrompt />
+      
+      </div> {/* Closes Main App Left Side */}
+
+      {/* ─── Validation Welcome & Technical Guide Modal ─── */}
+      {showWelcomeModal && presetProfile && (
+        <ValidationWelcomeModal
+          isOpen={true}
+          profile={presetProfile}
+          onClose={() => setShowWelcomeModal(false)}
+          onStartValidation={() => {
+            setShowWelcomeModal(false);
+            setShowValidationModal(true);
+            setShowManualBook(true);
+          }}
+        />
+      )}
+
+      {/* ─── Validation Split Panel (Right Side) ─── */}
+      {showValidationModal && validationViewMode === 'split' && typeof window !== 'undefined' && window.innerWidth >= 768 && (
+        <div 
+          style={{ width: `${Math.max(300, Math.min(validationPanelWidth, window.innerWidth - 420))}px` }} 
+          className="flex-shrink-0 h-full relative z-20 transition-all duration-150"
+        >
+          <ValidationModal
+            isOpen={true}
+            onClose={() => setShowValidationModal(false)}
+            initialType={validationType}
+            presetProfile={presetProfile}
+            windowMode="split"
+            onWindowModeChange={setValidationViewMode}
+            panelWidth={validationPanelWidth}
+            onPanelWidthChange={setValidationPanelWidth}
+            onTryCode={(code) => handleCodeChange(code)}
+          />
+        </div>
+      )}
+
+      {/* ─── Validation Overlay Modes (Minimized / Modal) ─── */}
+      {showValidationModal && (validationViewMode !== 'split' || typeof window !== 'undefined' && window.innerWidth < 768) && (
+        <ValidationModal
+          isOpen={true}
+          onClose={() => setShowValidationModal(false)}
+          initialType={validationType}
+          presetProfile={presetProfile}
+          windowMode={validationViewMode}
+          onWindowModeChange={setValidationViewMode}
+          panelWidth={validationPanelWidth}
+          onPanelWidthChange={setValidationPanelWidth}
+          onTryCode={(code) => handleCodeChange(code)}
+        />
+      )}
     </div>
   );
 }

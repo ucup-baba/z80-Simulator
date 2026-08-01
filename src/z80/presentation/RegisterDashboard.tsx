@@ -58,12 +58,12 @@ const RegisterDisplay: React.FC<RegisterDisplayProps> = ({ name, value, bits, hi
 
   return (
     <div
-      className={`flex items-center justify-between px-2 py-0.5 lg:py-1 rounded border transition-all duration-300 cursor-pointer hover:opacity-80 ${baseBg} ${flashClass}`}
+      className={`flex items-center justify-between px-2 py-0.5 lg:py-1 rounded border transition-all duration-300 cursor-pointer hover:opacity-80 min-w-[100px] flex-1 ${baseBg} ${flashClass}`}
       onClick={onToggleFormat}
       title={`Click to toggle format (${format})`}
     >
-      <span className={`text-[10px] lg:text-xs font-semibold min-w-[28px] ${isDark ? 'text-zinc-400' : 'text-gray-500'}`} style={{ fontFamily: 'var(--font-sans)' }}>{name}</span>
-      <span className={`text-[10px] lg:text-xs font-bold ${isDark ? 'text-zinc-100' : 'text-gray-900'}`} style={{ fontFamily: 'var(--font-mono)' }}>
+      <span className={`text-[10px] lg:text-xs font-semibold min-w-[24px] ${isDark ? 'text-zinc-400' : 'text-gray-500'}`} style={{ fontFamily: 'var(--font-sans)' }}>{name}</span>
+      <span className={`text-[10px] lg:text-xs font-bold whitespace-nowrap ${isDark ? 'text-zinc-100' : 'text-gray-900'}`} style={{ fontFamily: 'var(--font-mono)' }}>
         {format === 'hex' && <span className={isDark ? 'text-zinc-600' : 'text-gray-400'}>0x</span>}
         {formatValue()}
       </span>
@@ -230,7 +230,7 @@ export const RegisterDashboard: React.FC<RegisterDashboardProps> = ({
             {/* 16-bit Registers */}
             <div>
               <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-1 lg:mb-2`}>16-bit registers</h3>
-              <div className="grid grid-cols-2 gap-1 lg:gap-1.5">
+              <div className="flex flex-wrap gap-1 lg:gap-1.5">
                 <RegisterDisplay name="BC" value={BC} bits={16} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
                 <RegisterDisplay name="SP" value={registers.registers16.SP} bits={16} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />
                 <RegisterDisplay name="DE" value={DE} bits={16} isDark={isDark} format={regFormat} onToggleFormat={toggleFormat} />

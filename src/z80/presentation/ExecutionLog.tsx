@@ -5,6 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useTheme } from './ThemeContext';
+import { Info, AlertCircle, CheckCircle2, ArrowDown, Pause, FileText } from 'lucide-react';
 
 interface ExecutionLogEntry {
   timestamp: number;
@@ -19,21 +20,9 @@ interface ExecutionLogProps {
 
 const LogEntry: React.FC<{ entry: ExecutionLogEntry; isDark: boolean }> = ({ entry, isDark }) => {
   const iconByType = {
-    info: (
-      <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    error: (
-      <svg className="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    success: (
-      <svg className="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
+    info: <Info className="w-3.5 h-3.5 text-blue-400" />,
+    error: <AlertCircle className="w-3.5 h-3.5 text-red-400" />,
+    success: <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />,
   };
 
   const textColor = {
@@ -103,7 +92,7 @@ export const ExecutionLog: React.FC<ExecutionLogProps> = ({ entries, onClear }) 
                 : isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
-            {autoScroll ? '⬇ Auto' : '⏸ Paused'}
+            {autoScroll ? <><ArrowDown className="w-3 h-3 inline" /> Auto</> : <><Pause className="w-3 h-3 inline" /> Paused</>}
           </button>
           <button
             onClick={onClear}
@@ -117,9 +106,7 @@ export const ExecutionLog: React.FC<ExecutionLogProps> = ({ entries, onClear }) 
       <div className="flex-1 overflow-y-auto px-4 py-2">
         {entries.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <svg className={`w-10 h-10 ${isDark ? 'text-zinc-700' : 'text-gray-300'} mb-2`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+            <FileText className={`w-10 h-10 ${isDark ? 'text-zinc-700' : 'text-gray-300'} mb-2`} strokeWidth={1.5} />
             <p className={`text-xs ${subtext}`}>No execution log yet</p>
             <p className={`text-xs ${isDark ? 'text-zinc-600' : 'text-gray-400'} mt-0.5`}>Load and run a program to see details</p>
           </div>

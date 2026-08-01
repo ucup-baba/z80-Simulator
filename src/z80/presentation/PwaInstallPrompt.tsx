@@ -11,24 +11,52 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
+export const triggerPwaInstall = (): boolean => {
+  const promptEvent = (window as any).deferredPwaPrompt;
+  if (promptEvent && typeof promptEvent.prompt === 'function') {
+    try {
+      promptEvent.prompt();
+      promptEvent.userChoice.then((choice: any) => {
+        if (choice && choice.outcome === 'accepted') {
+          (window as any).deferredPwaPrompt = null;
+        }
+      });
+      return true;
+    } catch (e) {
+      console.warn('PWA install error:', e);
+    }
+  }
+  return false;
+};
+
 export const PwaInstallPrompt: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const { isDark } = useTheme();
 
   useEffect(() => {
+    let timer: any;
     const handler = (e: Event) => {
       // Mencegah Chrome memunculkan mini-infobar secara otomatis
       e.preventDefault();
       // Simpan event agar bisa dipicu nanti
+      (window as any).deferredPwaPrompt = e;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       // Tampilkan UI Snackbar kita
       setShowPrompt(true);
+
+      // Otomatis tertutup setelah 10 detik
+      timer = setTimeout(() => {
+        setShowPrompt(false);
+      }, 10000);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   const handleInstallClick = async () => {

@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import type { MemoryMap } from '../domain';
 import { useTheme } from './ThemeContext';
-import { Lightbulb } from 'lucide-react';
+import { Lightbulb, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface MemoryEditorPanelProps {
   memory: MemoryMap;
@@ -94,8 +94,8 @@ export const MemoryEditorPanel: React.FC<MemoryEditorPanelProps> = ({ memory, on
                 if (e.key === 'Enter') { handleJumpToAddress(e.currentTarget.value); e.currentTarget.value = ''; }
               }}
             />
-            <button onClick={handlePrevPage} disabled={startAddress === 0} className={`px-2 py-1 text-xs ${btnBg} disabled:opacity-50 border rounded transition-colors`}>◀</button>
-            <button onClick={handleNextPage} disabled={startAddress + bytesToShow >= memory.size} className={`px-2 py-1 text-xs ${btnBg} disabled:opacity-50 border rounded transition-colors`}>▶</button>
+            <button onClick={handlePrevPage} disabled={startAddress === 0} className={`px-2 py-1 text-xs ${btnBg} disabled:opacity-50 border rounded transition-colors`}><ChevronLeft className="w-3.5 h-3.5" /></button>
+            <button onClick={handleNextPage} disabled={startAddress + bytesToShow >= memory.size} className={`px-2 py-1 text-xs ${btnBg} disabled:opacity-50 border rounded transition-colors`}><ChevronRight className="w-3.5 h-3.5" /></button>
           </div>
         </div>
         <div className={`text-xs ${subtext} flex items-center justify-center gap-1`}><Lightbulb className="w-3.5 h-3.5" /> Double-click cell to edit • Enter to save • Esc to cancel</div>

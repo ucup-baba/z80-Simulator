@@ -432,26 +432,11 @@ export const MateriDasarPanel: React.FC<MateriDasarPanelProps> = ({ isOpen, onCl
     </div>
   );
 
-  if (isMobile) {
-    return (
-      <div className={`fixed inset-0 z-[100] ${bg}`}>
+  return (
+    <div className="absolute inset-0 z-50 print:hidden flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm pointer-events-auto">
+      <div className={`w-full max-w-3xl h-[85vh] rounded-2xl border shadow-2xl flex flex-col overflow-hidden ${bg}`}>
         {content}
       </div>
-    );
-  }
-
-  return (
-    <div
-      className="fixed z-[60]"
-      style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        width: '390px',
-        height: '600px',
-        maxHeight: '85vh'
-      }}
-    >
-      {content}
     </div>
   );
 };

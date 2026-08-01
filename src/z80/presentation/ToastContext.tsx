@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useTheme } from './ThemeContext';
+import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -67,11 +68,11 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
     return () => clearTimeout(timerRef.current);
   }, [toast, onRemove]);
 
-  const icons: Record<ToastType, string> = {
-    success: '✓',
-    error: '✕',
-    warning: '⚠',
-    info: 'ℹ',
+  const icons: Record<ToastType, React.ReactNode> = {
+    success: <CheckCircle2 className="w-4 h-4" />,
+    error: <XCircle className="w-4 h-4" />,
+    warning: <AlertTriangle className="w-4 h-4" />,
+    info: <Info className="w-4 h-4" />,
   };
 
   const colors: Record<ToastType, string> = {
@@ -97,15 +98,13 @@ const ToastItem: React.FC<{ toast: Toast; onRemove: (id: string) => void }> = ({
       }`}
       style={{ animation: isExiting ? undefined : 'slideInRight 0.3s ease-out' }}
     >
-      <span className={`text-lg ${iconColors[toast.type]} flex-shrink-0`}>{icons[toast.type]}</span>
+      <span className={`${iconColors[toast.type]} flex-shrink-0`}>{icons[toast.type]}</span>
       <p className={`text-sm ${textColor} flex-1`} style={{ fontFamily: 'var(--font-sans)' }}>{toast.message}</p>
       <button
         onClick={() => { setIsExiting(true); setTimeout(() => onRemove(toast.id), 300); }}
         className={`flex-shrink-0 p-0.5 rounded transition-colors ${isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-gray-400 hover:text-gray-600'}`}
       >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
+        <X className="w-3.5 h-3.5" />
       </button>
     </div>
   );

@@ -17,6 +17,15 @@ import {
   analyzeProgram,
 } from '../usecases';
 
+export function speedToDelayMs(speed: number): number {
+  if (speed >= 100) return 0;
+  if (speed <= 50) {
+    return Math.round(1000 - ((speed - 1) / 49) * 800);
+  } else {
+    return Math.round(200 - ((speed - 50) / 49) * 195);
+  }
+}
+
 interface ExecutionLogEntry {
   timestamp: number;
   message: string;
@@ -32,12 +41,17 @@ interface Z80Store {
   isRunning: boolean;
   parseError: string | null;
   analysisResult: AnalysisResult | null;
+  speed: number;
+  loadedSourceCode: string | null;
+  isCodeDirty: boolean;
 
   // Actions
   setSourceCode: (code: string) => void;
+  setSpeed: (speed: number) => void;
   loadCode: () => boolean;
-  stepInstruction: () => void;
-  runProgram: () => void;
+  stepInstruction: () => boolean;
+  runProgram: (overrideSpeed?: number) => void;
+  pauseProgram: () => void;
   resetCPU: () => void;
   clearLog: () => void;
   writeMemory: (address: number, value: number) => void;
@@ -95,6 +109,8 @@ OVERFLOW:
 SELESAI:
     HALT            ; Matikan CPU`;
 
+let runTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
 export const useZ80Store = create<Z80Store>((set, get) => ({
   // Initial state
   cpu: createCPUState(),
@@ -104,24 +120,51 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
   isRunning: false,
   parseError: null,
   analysisResult: null,
+  speed: 50,
+  loadedSourceCode: null,
+  isCodeDirty: false,
+
+  setSpeed: (speed: number) => {
+    set({ speed });
+  },
 
   // Set source code (just updates the text, doesn't parse)
   setSourceCode: (code: string) => {
-    set({ sourceCode: code });
+    const { loadedSourceCode, analysisResult } = get();
+    const isCodeDirty = loadedSourceCode !== null ? (code !== loadedSourceCode) : true;
+    set({
+      sourceCode: code,
+      isCodeDirty,
+      analysisResult: isCodeDirty ? null : analysisResult,
+      parseError: null,
+    });
   },
 
   // Parse and load the program
   loadCode: () => {
+    if (runTimeoutId !== null) {
+      clearTimeout(runTimeoutId);
+      runTimeoutId = null;
+    }
+
     const { sourceCode } = get();
 
     try {
       const program = loadProgram(sourceCode);
+
+      if (program.instructions.length === 0) {
+        throw new Error('Kode program kosong atau tidak berisi instruksi Z-80 yang valid. Ketik kode atau pilih Contoh Program.');
+      }
+
       const cpu = createCPUState();
 
       set({
         program,
         cpu,
+        isRunning: false,
         parseError: null,
+        loadedSourceCode: sourceCode,
+        isCodeDirty: false,
         executionLog: [
           {
             timestamp: Date.now(),
@@ -137,7 +180,10 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
       set({
         program: null,
         cpu: createCPUState(),
+        isRunning: false,
         parseError: errorMessage,
+        loadedSourceCode: null,
+        isCodeDirty: true,
         executionLog: [
           {
             timestamp: Date.now(),
@@ -165,7 +211,7 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
           },
         ],
       });
-      return;
+      return false;
     }
 
     if (cpu.halted) {
@@ -179,7 +225,7 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
           },
         ],
       });
-      return;
+      return false;
     }
 
     const result = step(cpu, program);
@@ -194,11 +240,13 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
       cpu: result.updatedState,
       executionLog: [...executionLog, newLogEntry],
     });
+
+    return result.success && !result.updatedState.halted && !result.updatedState.error;
   },
 
-  // Run program to completion
-  runProgram: () => {
-    const { cpu, program, executionLog } = get();
+  // Run program step-by-step with speed delay
+  runProgram: (overrideSpeed?: number) => {
+    const { cpu, program, executionLog, pauseProgram } = get();
 
     if (!program) {
       set({
@@ -228,30 +276,86 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
       return;
     }
 
+    pauseProgram();
+
     set({ isRunning: true });
 
-    const result = runToCompletion(cpu, program);
+    let stepCount = 0;
+    const maxSteps = 5000;
 
-    const messages = result.message ? result.message.split('\n') : [];
-    const newLogEntries: ExecutionLogEntry[] = messages.map(msg => ({
-      timestamp: Date.now(),
-      message: msg,
-      type: result.success ? 'info' : 'error',
-    }));
+    const executeNextStep = () => {
+      const { isRunning, cpu, program, speed: currentStoreSpeed } = get();
 
-    set({
-      cpu: result.updatedState,
-      executionLog: [...executionLog, ...newLogEntries],
-      isRunning: false,
-    });
+      if (!isRunning || !program || cpu.halted || cpu.error || stepCount >= maxSteps) {
+        if (stepCount >= maxSteps && !cpu.halted && !cpu.error) {
+          const { executionLog } = get();
+          set({
+            executionLog: [
+              ...executionLog,
+              {
+                timestamp: Date.now(),
+                message: `Execution stopped: maximum steps (${maxSteps}) reached.`,
+                type: 'error',
+              },
+            ],
+          });
+        }
+        set({ isRunning: false });
+        if (runTimeoutId !== null) {
+          clearTimeout(runTimeoutId);
+          runTimeoutId = null;
+        }
+        return;
+      }
+
+      stepCount++;
+      const canContinue = get().stepInstruction();
+
+      const updatedCpu = get().cpu;
+      if (!canContinue || updatedCpu.halted || updatedCpu.error) {
+        set({ isRunning: false });
+        if (runTimeoutId !== null) {
+          clearTimeout(runTimeoutId);
+          runTimeoutId = null;
+        }
+        return;
+      }
+
+      const activeSpeed = overrideSpeed ?? currentStoreSpeed;
+      const delayMs = speedToDelayMs(activeSpeed);
+
+      if (delayMs <= 0) {
+        runTimeoutId = setTimeout(executeNextStep, 0);
+      } else {
+        runTimeoutId = setTimeout(executeNextStep, delayMs);
+      }
+    };
+
+    executeNextStep();
+  },
+
+  // Pause execution
+  pauseProgram: () => {
+    if (runTimeoutId !== null) {
+      clearTimeout(runTimeoutId);
+      runTimeoutId = null;
+    }
+    set({ isRunning: false });
   },
 
   // Reset CPU to initial state
   resetCPU: () => {
-    const { cpu } = get();
+    if (runTimeoutId !== null) {
+      clearTimeout(runTimeoutId);
+      runTimeoutId = null;
+    }
+    const { cpu, loadedSourceCode, sourceCode } = get();
+    const isCodeDirty = loadedSourceCode !== null ? (sourceCode !== loadedSourceCode) : true;
 
     set({
       cpu: resetCPUState(cpu),
+      isRunning: false,
+      isCodeDirty,
       executionLog: [
         {
           timestamp: Date.now(),
@@ -328,6 +432,11 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
 
   // Load example program by ID
   loadExampleProgram: (id: string) => {
+    if (runTimeoutId !== null) {
+      clearTimeout(runTimeoutId);
+      runTimeoutId = null;
+    }
+
     const example = examplePrograms.find((p) => p.id === id);
     if (!example) return;
 
@@ -335,6 +444,7 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
       sourceCode: example.code,
       program: null,
       cpu: createCPUState(),
+      isRunning: false,
       parseError: null,
       analysisResult: null,
       executionLog: [

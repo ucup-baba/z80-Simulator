@@ -139,7 +139,7 @@ COPY:
 ORG 0000H
 
     LD HL, 0050H    ; Set HL sebagai pointer memori ke alamat 0050H
-    LD B, 0EH       ; Set Counter Loop (coba cari 14 angka)
+    LD B, 0FH       ; Set Counter Loop ke 15 (0FH) agar mencapai angka ke-15
     LD D, 00H       ; Angka pertama (0)
     LD E, 01H       ; Angka kedua (1)
 
@@ -157,7 +157,7 @@ LOOP_FIB:
     ADD A, E        ; A = A + E (Proses Penjumlahan Fibonacci)
 
     ; --- JEBAKAN FLAG ---
-    ; Deret ke-14 adalah 377. Karena arsitektur 8-bit maksimal 255,
+    ; Deret ke-15 adalah 377 (144 + 233). Karena arsitektur 8-bit maksimal 255,
     ; penjumlahan ini akan JEBOL (Overflow) dan menyalakan CARRY FLAG (C)!
     JP C, OVERFLOW  ; Lompat ke label OVERFLOW jika Carry Flag = 1
 
@@ -259,5 +259,40 @@ LEWATI:
     LD (HL), A      ; Simpan hasil maks ke alamat 0060H
 
     HALT            ; Hentikan CPU`
+  },
+  {
+    id: 'stack-subroutine',
+    title: 'Operasi Stack & Subrutin',
+    category: 'Stack & Subrutin',
+    difficulty: 'sedang',
+    description: 'Mendemonstrasikan inisialisasi Stack Pointer (SP), menyimpan/mengambil data dengan PUSH/POP, dan pemanggilan subrutin dengan CALL/RET.',
+    learningObjective: 'Memahami mekanisme LIFO Stack, perubahan SP, penyimpanan return address, dan penggunaan PUSH/POP.',
+    code: `; Program: Operasi Stack & Subrutin (PUSH / POP / CALL / RET)
+
+ORG 0000H
+
+    ; 1. Inisialisasi Stack Pointer di alamat 1000H
+    LD SP, 1000H
+
+    ; 2. Simpan nilai register BC dan DE ke Stack
+    LD BC, 1234H    ; BC = 1234H
+    LD DE, 5678H    ; DE = 5678H
+    PUSH BC         ; Simpan BC ke Stack (SP berkurang 2)
+    PUSH DE         ; Simpan DE ke Stack (SP berkurang 2 lagi)
+
+    ; 3. Ambil data dari Stack ke pasangan register lain
+    POP HL          ; HL menerima data teratas Stack -> HL = 5678H
+    POP AF          ; AF menerima data berikutnya -> A = 12H, F = 34H
+
+    ; 4. Panggil Subrutin menggunakan CALL
+    CALL SUBRUTIN_HITUNG
+
+    HALT            ; Program utama selesai
+
+; --- SUBRUTIN ---
+SUBRUTIN_HITUNG:
+    LD A, 05H
+    ADD A, 03H      ; A = 08H
+    RET             ; Kembali ke instruksi setelah CALL (alamat di-POP dari Stack)`
   }
 ];

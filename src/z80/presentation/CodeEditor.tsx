@@ -82,6 +82,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const lines = value.split('\n');
   const lineCount = lines.length;
 
+  // Extract error line index (1-based line number in error message to 0-based index)
+  const errorLineMatch = parseError ? parseError.match(/line (\d+)/i) : null;
+  const errorLineIndex = errorLineMatch ? parseInt(errorLineMatch[1], 10) - 1 : -1;
+
   // Track scroll offsets in state for transform-based sync (reliable on mobile)
   const [scrollOffset, setScrollOffset] = useState({ top: 0, left: 0 });
 
@@ -138,6 +142,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       <div className={`flex items-center justify-between px-4 py-2.5 ${headerBg} border-b ${borderColor} transition-colors duration-300`}>
         <h2 className={`font-semibold text-sm ${textColor}`} style={{ fontFamily: 'var(--font-sans)' }}>Assembly Code</h2>
         <div className="flex items-center gap-2">
+          {parseError && (
+            <span className="text-xs px-2 py-0.5 bg-red-500/20 text-red-400 font-medium rounded-full animate-pulse">Syntax Error</span>
+          )}
           {breakpoints.size > 0 && (
             <span className="text-xs px-2 py-0.5 bg-red-500/20 text-red-400 rounded-full">{breakpoints.size} BP</span>
           )}
@@ -160,25 +167,32 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
               willChange: 'transform',
             }}
           >
-            {Array.from({ length: lineCount }, (_, i) => (
-              <div
-                key={i}
-                className={`text-xs md:text-sm flex gap-0.5 cursor-pointer group ${lineNumColor}`}
-                style={{ height: '21px', lineHeight: '21px' }}
-                onClick={() => onToggleBreakpoint?.(i + 1)}
-                title="Click to toggle breakpoint"
-              >
-                {/* Breakpoint dot */}
-                <div className="w-3 flex items-center justify-center flex-shrink-0" style={{ height: '100%' }}>
-                  {breakpoints.has(i + 1) ? (
-                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/50" />
-                  ) : (
-                    <div className="w-2.5 h-2.5 rounded-full opacity-0 group-hover:opacity-30 bg-red-400 transition-opacity hidden md:block" />
-                  )}
+            {Array.from({ length: lineCount }, (_, i) => {
+              const isError = i === errorLineIndex;
+              return (
+                <div
+                  key={i}
+                  className={`text-xs md:text-sm flex gap-0.5 cursor-pointer group ${isError ? 'bg-red-500/20 text-red-500 font-bold' : lineNumColor}`}
+                  style={{ height: '21px', lineHeight: '21px' }}
+                  onClick={() => onToggleBreakpoint?.(i + 1)}
+                  title={isError ? `Syntax error pada baris ${i + 1}` : "Click to toggle breakpoint"}
+                >
+                  {/* Breakpoint or error indicator */}
+                  <div className="w-3 flex items-center justify-center flex-shrink-0" style={{ height: '100%' }}>
+                    {isError ? (
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex items-center justify-center text-[9px] text-white font-extrabold animate-pulse" title="Baris Error">
+                        !
+                      </div>
+                    ) : breakpoints.has(i + 1) ? (
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/50" />
+                    ) : (
+                      <div className="w-2.5 h-2.5 rounded-full opacity-0 group-hover:opacity-30 bg-red-400 transition-opacity hidden md:block" />
+                    )}
+                  </div>
+                  <span className={`text-right flex-1 pr-1 block ${isError ? 'text-red-500 font-bold' : ''}`}>{i + 1}</span>
                 </div>
-                <span className="text-right flex-1 pr-1 block">{i + 1}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -195,13 +209,21 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
               className="text-xs md:text-sm whitespace-pre"
               style={{ fontFamily: 'var(--font-mono)', pointerEvents: 'none', lineHeight: '21px' }}
             >
-              {lines.map((line, i) => (
-                <div
-                  key={i}
-                  dangerouslySetInnerHTML={{ __html: highlightLine(line, isDark) || '&nbsp;' }}
-                  style={{ height: '21px' }}
-                />
-              ))}
+              {lines.map((line, i) => {
+                const isError = i === errorLineIndex;
+                return (
+                  <div
+                    key={i}
+                    className={`transition-colors duration-200 ${
+                      isError
+                        ? 'bg-red-500/30 border-l-4 border-red-500 -ml-4 pl-3 rounded-r font-semibold'
+                        : ''
+                    }`}
+                    dangerouslySetInnerHTML={{ __html: highlightLine(line, isDark) || '&nbsp;' }}
+                    style={{ height: '21px' }}
+                  />
+                );
+              })}
             </pre>
           </div>
 
@@ -219,13 +241,21 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
                 lineHeight: '21px'
               }}
             >
-              {lines.map((line, i) => (
-                <div
-                  key={i}
-                  dangerouslySetInnerHTML={{ __html: highlightLine(line, isDark) || '&nbsp;' }}
-                  style={{ height: '21px' }}
-                />
-              ))}
+              {lines.map((line, i) => {
+                const isError = i === errorLineIndex;
+                return (
+                  <div
+                    key={i}
+                    className={`transition-colors duration-200 ${
+                      isError
+                        ? 'bg-red-500/30 border-l-4 border-red-500 -ml-4 pl-3 rounded-r font-semibold'
+                        : ''
+                    }`}
+                    dangerouslySetInnerHTML={{ __html: highlightLine(line, isDark) || '&nbsp;' }}
+                    style={{ height: '21px' }}
+                  />
+                );
+              })}
             </pre>
           </div>
 

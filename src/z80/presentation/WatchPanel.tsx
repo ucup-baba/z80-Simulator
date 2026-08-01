@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import type { MemoryMap, RegisterState } from '../domain';
 import { useTheme } from './ThemeContext';
+import { Eye, X } from 'lucide-react';
 
 interface WatchVariable {
   id: string;
@@ -170,10 +171,7 @@ export const WatchPanel: React.FC<WatchPanelProps> = ({ memory, registers }) => 
       <div className="flex-1 overflow-y-auto">
         {watches.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <svg className={`w-10 h-10 ${isDark ? 'text-zinc-700' : 'text-gray-300'} mb-2`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
+            <Eye className={`w-10 h-10 ${isDark ? 'text-zinc-700' : 'text-gray-300'} mb-2`} strokeWidth={1.5} />
             <p className={`text-xs ${subtext}`}>No watch variables</p>
             <p className={`text-xs ${isDark ? 'text-zinc-600' : 'text-gray-400'} mt-0.5`}>Add addresses or registers to monitor</p>
           </div>
@@ -214,9 +212,7 @@ export const WatchPanel: React.FC<WatchPanelProps> = ({ memory, registers }) => 
                       className={`p-1 transition-colors ${isDark ? 'text-zinc-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
                       title="Remove"
                     >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>

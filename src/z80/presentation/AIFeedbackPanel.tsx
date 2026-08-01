@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { useTheme } from './ThemeContext';
 import type { AnalysisFeedback, AnalysisResult, FeedbackSeverity, FeedbackCategory } from '../usecases/programAnalyzer';
 import { deepAnalyzeZ80Code } from '../usecases/geminiAnalyzer';
-import { Bot, Search, Lightbulb, FileText, CheckCircle2, Activity, Repeat, Trash2, Package, RefreshCw, Sparkles, Hourglass, Flag, Zap, PartyPopper } from 'lucide-react';
+import { Bot, Search, Lightbulb, FileText, CheckCircle2, Activity, Repeat, Trash2, Package, RefreshCw, Sparkles, Hourglass, Flag, Zap, PartyPopper, ChevronDown, X } from 'lucide-react';
 
 interface AIFeedbackPanelProps {
   isOpen: boolean;
@@ -16,6 +16,7 @@ interface AIFeedbackPanelProps {
   onAnalyze: () => void;
   hasProgram: boolean;
   sourceCode: string;
+  isCodeDirty?: boolean;
 }
 
 const SEVERITY_META: Record<FeedbackSeverity, { color: string; darkColor: string; bg: string; darkBg: string; label: string }> = {
@@ -102,19 +103,14 @@ function FeedbackItem({ feedback, isDark }: { feedback: AnalysisFeedback; isDark
         </div>
 
         {/* Expand icon */}
-        <svg
-          className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''} ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''} ${isDark ? 'text-zinc-500' : 'text-gray-400'}`} />
       </div>
     </div>
   );
 }
 
 export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
-  isOpen, onClose, analysisResult, onAnalyze, hasProgram, sourceCode,
+  isOpen, onClose, analysisResult, onAnalyze, hasProgram, sourceCode, isCodeDirty = false,
 }) => {
   const { isDark } = useTheme();
 
@@ -123,7 +119,10 @@ export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
 
   if (!isOpen) return null;
 
+  const canAnalyze = hasProgram && !isCodeDirty;
+
   const handleDeepScan = async () => {
+    if (!canAnalyze) return;
     setIsDeepScanning(true);
     setGeminiResponse(null);
     const result = await deepAnalyzeZ80Code(sourceCode, analysisResult?.feedbacks || []);
@@ -143,7 +142,7 @@ export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
   const tipCount = analysisResult?.feedbacks.filter(f => f.severity === 'tip').length ?? 0;
 
   return (
-    <div className={`fixed inset-0 z-50 ${overlayBg} flex items-center justify-center p-4`} onClick={onClose}>
+    <div className={`absolute inset-0 z-50 ${overlayBg} flex items-center justify-center p-4`} onClick={onClose}>
       <div
         className={`w-full max-w-lg max-h-[85vh] rounded-2xl border ${panelBg} shadow-2xl overflow-hidden flex flex-col`}
         onClick={(e) => e.stopPropagation()}
@@ -167,32 +166,40 @@ export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
               onClick={onClose}
               className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-zinc-800 text-zinc-400' : 'hover:bg-gray-100 text-gray-400'}`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {!analysisResult ? (
+          {/* Dirty code warning banner */}
+          {isCodeDirty && (
+            <div className="p-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2.5 text-xs text-amber-500 font-medium">
+              <Zap className="w-4 h-4 shrink-0 animate-bounce" />
+              <span>Kode di editor telah diubah. Silakan klik tombol <strong>"Load"</strong> pada panel kontrol terlebih dahulu untuk menganalisis kode terbaru Anda.</span>
+            </div>
+          )}
+
+          {(!analysisResult || isCodeDirty) ? (
             // No analysis yet
             <div className="flex flex-col items-center justify-center py-12 px-6">
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${isDark ? 'bg-zinc-800' : 'bg-gray-100'}`}>
                 <Search className="w-8 h-8 text-purple-500" />
               </div>
               <p className={`text-center ${subtext} text-sm mb-4`}>
-                {hasProgram
-                  ? 'Klik "Analisis Kode" untuk memulai review otomatis program Assembly Anda.'
-                  : 'Tulis kode Assembly dan klik "Load" terlebih dahulu, lalu jalankan analisis.'
+                {isCodeDirty
+                  ? 'Kode di editor telah diubah. Klik "Load" terlebih dahulu pada kontrol bawah.'
+                  : (hasProgram
+                    ? 'Klik "Analisis Kode" untuk memulai review otomatis program Assembly Anda.'
+                    : 'Tulis kode Assembly dan klik "Load" terlebih dahulu, lalu jalankan analisis.')
                 }
               </p>
               <button
                 onClick={onAnalyze}
-                disabled={!hasProgram}
+                disabled={!canAnalyze}
                 className={`px-6 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
-                  hasProgram
+                  canAnalyze
                     ? 'bg-gradient-to-r from-purple-500 to-blue-600 text-white shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 hover:scale-105 active:scale-95'
                     : isDark ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }`}
@@ -220,17 +227,24 @@ export const AIFeedbackPanel: React.FC<AIFeedbackPanelProps> = ({
               <div className="flex gap-2">
                 <button
                   onClick={onAnalyze}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  disabled={!canAnalyze}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                    !canAnalyze
+                      ? (isDark ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed')
+                      : (isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700')
+                  }`}
                 >
                   <div className="flex items-center justify-center gap-2"><RefreshCw className="w-4 h-4" /> Linter Ulang</div>
                 </button>
                 <button
                   onClick={handleDeepScan}
-                  disabled={isDeepScanning}
+                  disabled={isDeepScanning || !canAnalyze}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                    isDeepScanning 
-                      ? 'bg-purple-500/50 cursor-not-allowed text-white' 
-                      : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-md'
+                    !canAnalyze
+                      ? (isDark ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed')
+                      : (isDeepScanning 
+                        ? 'bg-purple-500/50 cursor-not-allowed text-white' 
+                        : 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-md')
                   }`}
                 >
                   <div className="flex items-center justify-center gap-2">

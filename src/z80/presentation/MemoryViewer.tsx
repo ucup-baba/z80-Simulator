@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import type { MemoryMap } from '../domain';
 import { useTheme } from './ThemeContext';
+import { MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface MemoryViewerProps {
   memory: MemoryMap;
@@ -76,7 +77,7 @@ export const MemoryViewer: React.FC<MemoryViewerProps> = ({ memory, pc = 0, sp =
                   : isDark ? 'text-zinc-500 hover:text-zinc-300 border border-zinc-700' : 'text-gray-400 hover:text-gray-600 border border-gray-200'
               }`}
             >
-              {autoFollowPC ? '📍 Following PC' : '📍 Follow PC'}
+              {autoFollowPC ? <><MapPin className="w-3 h-3 inline" /> Following PC</> : <><MapPin className="w-3 h-3 inline" /> Follow PC</>}
             </button>
             <input
               type="text"
@@ -90,8 +91,8 @@ export const MemoryViewer: React.FC<MemoryViewerProps> = ({ memory, pc = 0, sp =
                 }
               }}
             />
-            <button onClick={handlePrevPage} disabled={startAddress === 0} className={`px-2 py-1 text-xs ${btnBg} disabled:opacity-50 border rounded transition-colors`}>◀</button>
-            <button onClick={handleNextPage} disabled={startAddress + bytesToShow >= memory.size} className={`px-2 py-1 text-xs ${btnBg} disabled:opacity-50 border rounded transition-colors`}>▶</button>
+            <button onClick={handlePrevPage} disabled={startAddress === 0} className={`px-2 py-1 text-xs ${btnBg} disabled:opacity-50 border rounded transition-colors`}><ChevronLeft className="w-3.5 h-3.5" /></button>
+            <button onClick={handleNextPage} disabled={startAddress + bytesToShow >= memory.size} className={`px-2 py-1 text-xs ${btnBg} disabled:opacity-50 border rounded transition-colors`}><ChevronRight className="w-3.5 h-3.5" /></button>
           </div>
         </div>
       </div>
