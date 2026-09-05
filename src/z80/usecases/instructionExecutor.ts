@@ -716,6 +716,13 @@ function executeJp(s: CPUState, inst: Instruction, cond?: ConditionCode): Execut
     return okJump(s, `JP (HL) → ${hex16(addr)}`);
   }
   // JP (IX) / JP (IY)
+  // Parser mengurai "(IX)" sebagai pengalamatan terindeks beroffset nol, jadi
+  // bentuk itulah yang sebenarnya sampai ke sini — bukan indexRegister.
+  if (!cond && (inst.operand1?.type === 'indexedIX' || inst.operand1?.type === 'indexedIY') && inst.operand1.value === 0) {
+    const reg: IndexRegister = inst.operand1.type === 'indexedIX' ? 'IX' : 'IY';
+    const addr = getIR(s, reg); s.registers.registers16.PC = addr;
+    return okJump(s, `JP (${reg}) → ${hex16(addr)}`);
+  }
   if (!cond && inst.operand1?.type === 'indexRegister') {
     const addr = getIR(s, inst.operand1.value); s.registers.registers16.PC = addr;
     return okJump(s, `JP (${inst.operand1.value}) → ${hex16(addr)}`);

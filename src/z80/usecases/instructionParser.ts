@@ -90,15 +90,21 @@ function isIndirect(value: string): { is: boolean; pair?: RegisterPair } {
  * Checks if a string is indexed addressing like (IX+d) or (IY+d) or (IX-d) or (IY-d)
  */
 function isIndexed(value: string): { is: boolean; reg?: IndexRegister; offset?: number } {
-  const trimmed = value.trim().toUpperCase();
+  const trimmed = value.trim().toUpperCase().replace(/\s+/g, '');
   // Match (IX+d), (IX-d), (IY+d), (IY-d), (IX), (IY)
-  const match = trimmed.match(/^\((IX|IY)([+-]\d+)?\)$/);
-  if (match) {
-    const reg = match[1] as IndexRegister;
-    const offset = match[2] ? parseInt(match[2], 10) : 0;
-    return { is: true, reg, offset };
-  }
-  return { is: false };
+  const match = trimmed.match(/^\((IX|IY)(?:([+-])(.+))?\)$/);
+  if (!match) return { is: false };
+
+  const reg = match[1] as IndexRegister;
+  if (!match[2]) return { is: true, reg, offset: 0 };
+
+  // Offset memakai parser angka yang sama dengan operand lain, sehingga
+  // (IX+0AH) dan (IX+0x0A) diterima seperti halnya (IX+10) — bukan hanya
+  // desimal seperti sebelumnya.
+  const magnitude = parseHexValue(match[3]);
+  if (isNaN(magnitude)) return { is: false };
+
+  return { is: true, reg, offset: match[2] === '-' ? -magnitude : magnitude };
 }
 
 /**
@@ -315,14 +321,18 @@ function reassembleTokens(tokens: string[]): string[] {
   const result: string[] = [];
   let i = 0;
   while (i < tokens.length) {
-    // If token starts with '(' but doesn't end with ')', merge with next
-    if (tokens[i].startsWith('(') && !tokens[i].endsWith(')') && i + 1 < tokens.length) {
-      result.push(tokens[i] + tokens[i + 1]);
-      i += 2;
-    } else {
-      result.push(tokens[i]);
+    let token = tokens[i];
+    i++;
+
+    // Gabungkan terus sampai kurungnya tertutup. Menggabung satu token saja
+    // tidak cukup: "(IX + 5)" terpecah menjadi tiga token oleh spasi, dan
+    // dulu hanya dua yang tersatukan sehingga operandnya rusak.
+    while (token.includes('(') && !token.includes(')') && i < tokens.length) {
+      token += tokens[i];
       i++;
     }
+
+    result.push(token);
   }
   return result;
 }

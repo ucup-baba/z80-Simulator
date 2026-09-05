@@ -615,6 +615,177 @@ test('CPIR yang tidak menemukan apa pun menghabiskan BC', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
+section('ALU — RLD / RRD (rotasi digit BCD)');
+
+test('RLD memutar digit ke kiri (contoh manual Zilog: A=7AH, (HL)=31H)', () => {
+  const { cpu } = runProgram('LD HL, 1000H\nLD A, 7AH\nRLD\nHALT', 100, { 0x1000: 0x31 });
+  assertEqual(cpu.registers.registers8.A, 0x73, 'A');
+  assertEqual(cpu.memory.bytes[0x1000], 0x1A, '(HL)');
+});
+
+test('RRD memutar digit ke kanan (contoh manual Zilog: A=84H, (HL)=20H)', () => {
+  const { cpu } = runProgram('LD HL, 1000H\nLD A, 84H\nRRD\nHALT', 100, { 0x1000: 0x20 });
+  assertEqual(cpu.registers.registers8.A, 0x80, 'A');
+  assertEqual(cpu.memory.bytes[0x1000], 0x42, '(HL)');
+});
+
+test('RLD tidak mengubah nibble tinggi A', () => {
+  const { cpu } = runProgram('LD HL, 1000H\nLD A, 0F5H\nRLD\nHALT', 100, { 0x1000: 0x28 });
+  assertEqual(cpu.registers.registers8.A, 0xF2, 'nibble tinggi A tetap F');
+  assertEqual(cpu.memory.bytes[0x1000], 0x85, '(HL)');
+});
+
+test('RLD tiga kali mengembalikan keadaan semula', () => {
+  // RLD memutar tiga digit (A rendah, (HL) tinggi, (HL) rendah) satu posisi,
+  // jadi tiga kali putaran menutup satu siklus penuh.
+  const { cpu } = runProgram('LD HL, 1000H\nLD A, 7AH\nRLD\nRLD\nRLD\nHALT', 100, { 0x1000: 0x31 });
+  assertEqual(cpu.registers.registers8.A, 0x7A, 'A kembali');
+  assertEqual(cpu.memory.bytes[0x1000], 0x31, '(HL) kembali');
+});
+
+test('RRD membatalkan RLD', () => {
+  const { cpu } = runProgram('LD HL, 1000H\nLD A, 7AH\nRLD\nRRD\nHALT', 100, { 0x1000: 0x31 });
+  assertEqual(cpu.registers.registers8.A, 0x7A, 'A kembali');
+  assertEqual(cpu.memory.bytes[0x1000], 0x31, '(HL) kembali');
+});
+
+test('RLD mematikan H dan N serta tidak menyentuh Carry', () => {
+  const { cpu } = runProgram('SCF\nLD HL, 1000H\nLD A, 7AH\nRLD\nHALT', 100, { 0x1000: 0x31 });
+  const f = cpu.registers.flags;
+  assertEqual(f.H, false, 'H');
+  assertEqual(f.N, false, 'N');
+  assertEqual(f.C, true, 'C dipertahankan');
+});
+
+test('RRD menyalakan Zero ketika A menjadi nol', () => {
+  const { cpu } = runProgram('LD HL, 1000H\nLD A, 00H\nRRD\nHALT', 100, { 0x1000: 0x50 });
+  assertEqual(cpu.registers.registers8.A, 0x00, 'A');
+  assertEqual(cpu.registers.flags.Z, true, 'Z');
+  assertEqual(cpu.memory.bytes[0x1000], 0x05, '(HL)');
+});
+
+// ─────────────────────────────────────────────────────────────
+section('Pengalamatan terindeks (IX+d) / (IY+d)');
+
+test('LD r, (IX+d) membaca memori pada IX ditambah offset', () => {
+  const { cpu } = runProgram('LD IX, 1000H\nLD A, (IX+5)\nHALT', 100, { 0x1005: 0x9C });
+  assertEqual(cpu.registers.registers8.A, 0x9C, 'A');
+});
+
+test('LD (IX+d), r menulis ke memori pada IX ditambah offset', () => {
+  const { cpu } = runProgram('LD IX, 1000H\nLD A, 3BH\nLD (IX+5), A\nHALT');
+  assertEqual(cpu.memory.bytes[0x1005], 0x3B, 'memori 1005H');
+});
+
+test('LD (IX+d), n menulis nilai langsung', () => {
+  const { cpu } = runProgram('LD IX, 1000H\nLD (IX+2), 7\nHALT');
+  assertEqual(cpu.memory.bytes[0x1002], 0x07, 'memori 1002H');
+});
+
+test('Offset negatif membaca ke belakang', () => {
+  const { cpu } = runProgram('LD IY, 1000H\nLD B, (IY-3)\nHALT', 100, { 0x0FFD: 0x5E });
+  assertEqual(cpu.registers.registers8.B, 0x5E, 'B');
+});
+
+test('(IX) tanpa offset sama dengan offset nol', () => {
+  const { cpu } = runProgram('LD IX, 1000H\nLD A, (IX)\nHALT', 100, { 0x1000: 0x42 });
+  assertEqual(cpu.registers.registers8.A, 0x42, 'A');
+});
+
+test('Offset boleh ditulis heksadesimal', () => {
+  // Regresi: dulu offset hanya menerima desimal, sehingga (IX+0AH) ditolak
+  // padahal seluruh manual mengajarkan penulisan heksadesimal.
+  const { cpu } = runProgram('LD IX, 1000H\nLD A, (IX+0AH)\nHALT', 100, { 0x100A: 0x77 });
+  assertEqual(cpu.registers.registers8.A, 0x77, 'A');
+});
+
+test('Spasi di dalam kurung tidak merusak operand', () => {
+  // Regresi: penyatuan token dulu berhenti setelah satu token, sehingga
+  // "(IX + 5)" yang terpecah tiga bagian gagal diurai.
+  const { cpu } = runProgram('LD IX, 1000H\nLD A, (IX + 5)\nHALT', 100, { 0x1005: 0x11 });
+  assertEqual(cpu.registers.registers8.A, 0x11, 'A');
+});
+
+test('Alamat terindeks membungkus di batas memori', () => {
+  const { cpu } = runProgram('LD IX, 0000H\nLD A, (IX-1)\nHALT', 100, { 0xFFFF: 0xAB });
+  assertEqual(cpu.registers.registers8.A, 0xAB, 'A membaca FFFFH');
+});
+
+test('ADD A, (IX+d) menjumlahkan isi memori', () => {
+  const { cpu } = runProgram('LD IX, 1000H\nLD A, 10H\nADD A, (IX+1)\nHALT', 100, { 0x1001: 0x05 });
+  assertEqual(cpu.registers.registers8.A, 0x15, 'A');
+});
+
+test('CP (IX+d) membandingkan tanpa mengubah A', () => {
+  const { cpu } = runProgram('LD IX, 1000H\nLD A, 20H\nCP (IX+2)\nHALT', 100, { 0x1002: 0x20 });
+  assertEqual(cpu.registers.registers8.A, 0x20, 'A tetap');
+  assertEqual(cpu.registers.flags.Z, true, 'Z');
+});
+
+test('INC dan DEC bekerja langsung pada memori terindeks', () => {
+  const naik = runProgram('LD IX, 1000H\nINC (IX+1)\nHALT', 100, { 0x1001: 0x41 });
+  assertEqual(naik.cpu.memory.bytes[0x1001], 0x42, 'INC');
+
+  const turun = runProgram('LD IY, 1000H\nDEC (IY+1)\nHALT', 100, { 0x1001: 0x41 });
+  assertEqual(turun.cpu.memory.bytes[0x1001], 0x40, 'DEC');
+});
+
+test('SLA pada memori terindeks menggeser isinya', () => {
+  const { cpu } = runProgram('LD IX, 1000H\nSLA (IX+1)\nHALT', 100, { 0x1001: 0x85 });
+  assertEqual(cpu.memory.bytes[0x1001], 0x0A, 'memori tergeser');
+  assertEqual(cpu.registers.flags.C, true, 'C menerima bit 7');
+});
+
+test('BIT, SET, dan RES bekerja pada memori terindeks', () => {
+  const uji = runProgram('LD IX, 1000H\nBIT 0, (IX+1)\nHALT', 100, { 0x1001: 0x01 });
+  assertEqual(uji.cpu.registers.flags.Z, false, 'BIT menemukan bit menyala');
+
+  const set = runProgram('LD IX, 1000H\nSET 3, (IX+1)\nHALT', 100, { 0x1001: 0x00 });
+  assertEqual(set.cpu.memory.bytes[0x1001], 0x08, 'SET');
+
+  const res = runProgram('LD IX, 1000H\nRES 3, (IX+1)\nHALT', 100, { 0x1001: 0xFF });
+  assertEqual(res.cpu.memory.bytes[0x1001], 0xF7, 'RES');
+});
+
+test('IX dan IY berdiri sendiri', () => {
+  const { cpu } = runProgram(
+    'LD IX, 1000H\nLD IY, 2000H\nLD A, (IX+0)\nLD B, (IY+0)\nHALT',
+    100,
+    { 0x1000: 0x11, 0x2000: 0x22 },
+  );
+  assertEqual(cpu.registers.registers8.A, 0x11, 'A dari IX');
+  assertEqual(cpu.registers.registers8.B, 0x22, 'B dari IY');
+});
+
+test('ADD IX, rr dan INC IX mengubah register indeks', () => {
+  const tambah = runProgram('LD IX, 1000H\nLD BC, 0234H\nADD IX, BC\nHALT');
+  assertEqual(tambah.cpu.registers.registers16.IX, 0x1234, 'ADD IX, BC');
+
+  const naik = runProgram('LD IX, 1000H\nINC IX\nHALT');
+  assertEqual(naik.cpu.registers.registers16.IX, 0x1001, 'INC IX');
+});
+
+test('PUSH IX lalu POP IY memindahkan nilainya lewat stack', () => {
+  const { cpu } = runProgram('LD IX, 1234H\nPUSH IX\nPOP IY\nHALT');
+  assertEqual(cpu.registers.registers16.IY, 0x1234, 'IY');
+});
+
+test('JP (IX) melompat ke alamat yang disimpan IX', () => {
+  // Regresi: parser mengurai "(IX)" sebagai terindeks beroffset nol, sedangkan
+  // executor hanya mengenali indexRegister — sehingga JP (IX) selalu gagal
+  // dengan "invalid target".
+  const { cpu } = runProgram('LD IX, 0003H\nJP (IX)\nHALT\nLD A, 77H\nHALT');
+  assertEqual(cpu.error, null, 'tanpa error');
+  assertEqual(cpu.registers.registers8.A, 0x77, 'instruksi tujuan dieksekusi');
+});
+
+test('JP (IY) juga melompat', () => {
+  const { cpu } = runProgram('LD IY, 0003H\nJP (IY)\nHALT\nLD A, 55H\nHALT');
+  assertEqual(cpu.error, null, 'tanpa error');
+  assertEqual(cpu.registers.registers8.A, 0x55, 'instruksi tujuan dieksekusi');
+});
+
+// ─────────────────────────────────────────────────────────────
 console.log(`\n${passed} lolos, ${failed} gagal`);
 
 if (failed > 0) {
