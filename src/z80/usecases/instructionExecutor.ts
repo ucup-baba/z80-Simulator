@@ -456,6 +456,10 @@ function executeBit(s: CPUState, inst: Instruction): ExecutionResult {
   const t = getBitAndTarget(s, inst); if ('error' in t) return fail(s, `BIT: ${t.error}`);
   const tested = (t.value >> t.bit) & 1;
   s.registers.flags.Z = tested === 0; s.registers.flags.H = true; s.registers.flags.N = false;
+  // Z-80 juga menurunkan P/V dan S dari hasil uji: P/V mengikuti Z, sedangkan
+  // S hanya menyala bila yang diuji adalah bit 7 dan bit itu bernilai 1.
+  s.registers.flags.P = tested === 0;
+  s.registers.flags.S = t.bit === 7 && tested === 1;
   return ok(s, `BIT ${t.bit}, ${t.desc}: Z=${tested === 0 ? 1 : 0}`);
 }
 function executeSet(s: CPUState, inst: Instruction): ExecutionResult {
@@ -524,7 +528,7 @@ function executeLdir(s: CPUState): ExecutionResult {
   do {
     const hl = getPair(s, 'HL'); const de = getPair(s, 'DE');
     s.memory.bytes[de] = s.memory.bytes[hl];
-    setPair(s, 'HL', hl + 1); setPair(s, 'DE', de + 1); bc--; setPair(s, 'BC', bc);
+    setPair(s, 'HL', hl + 1); setPair(s, 'DE', de + 1); bc = toWord(bc - 1); setPair(s, 'BC', bc);
     iterations++;
   } while (bc !== 0);
   s.registers.flags.H = false; s.registers.flags.N = false; s.registers.flags.P = false;
@@ -547,7 +551,7 @@ function executeLddr(s: CPUState): ExecutionResult {
   do {
     const hl = getPair(s, 'HL'); const de = getPair(s, 'DE');
     s.memory.bytes[de] = s.memory.bytes[hl];
-    setPair(s, 'HL', hl - 1); setPair(s, 'DE', de - 1); bc--; setPair(s, 'BC', bc);
+    setPair(s, 'HL', hl - 1); setPair(s, 'DE', de - 1); bc = toWord(bc - 1); setPair(s, 'BC', bc);
     iterations++;
   } while (bc !== 0);
   s.registers.flags.H = false; s.registers.flags.N = false; s.registers.flags.P = false;
@@ -573,7 +577,7 @@ function executeCpir(s: CPUState): ExecutionResult {
   do {
     const hl = getPair(s, 'HL'); const m = s.memory.bytes[hl];
     lastM = m;
-    setPair(s, 'HL', hl + 1); bc--; setPair(s, 'BC', bc);
+    setPair(s, 'HL', hl + 1); bc = toWord(bc - 1); setPair(s, 'BC', bc);
     iterations++;
     if (a === m) { found = true; break; }
   } while (bc !== 0);
@@ -602,7 +606,7 @@ function executeCpdr(s: CPUState): ExecutionResult {
   do {
     const hl = getPair(s, 'HL'); const m = s.memory.bytes[hl];
     lastM = m;
-    setPair(s, 'HL', hl - 1); bc--; setPair(s, 'BC', bc);
+    setPair(s, 'HL', hl - 1); bc = toWord(bc - 1); setPair(s, 'BC', bc);
     iterations++;
     if (a === m) { found = true; break; }
   } while (bc !== 0);

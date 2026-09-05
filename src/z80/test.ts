@@ -58,10 +58,18 @@ function assertThrows(fn: () => unknown, mustContain: string) {
 }
 
 /** Menjalankan program sampai HALT, error, atau batas langkah. */
-function runProgram(code: string, maxSteps = 5000): { cpu: CPUState; steps: number } {
+function runProgram(
+  code: string,
+  maxSteps = 5000,
+  memorySeed: Record<number, number> = {},
+): { cpu: CPUState; steps: number } {
   const program = loadProgram(code);
   let cpu = createCPUState();
   cpu.registers.registers16.PC = program.orgAddress;
+
+  for (const [address, value] of Object.entries(memorySeed)) {
+    cpu.memory.bytes[Number(address)] = value;
+  }
 
   let steps = 0;
   while (!cpu.halted && !cpu.error && steps < maxSteps) {
@@ -272,6 +280,338 @@ test('Contoh fibonacci menulis deret yang benar ke memori', () => {
   expected.forEach((value, i) => {
     assertEqual(cpu.memory.bytes[0x50 + i], value, `memori ${(0x50 + i).toString(16)}H`);
   });
+});
+
+// ─────────────────────────────────────────────────────────────
+section('ALU — operasi logika');
+
+test('AND selalu menyalakan H dan mematikan C', () => {
+  const { cpu } = runProgram('LD A, 3FH\nAND 0FH\nHALT');
+  const f = cpu.registers.flags;
+  assertEqual(cpu.registers.registers8.A, 0x0F, 'A');
+  assertEqual(f.H, true, 'H selalu set untuk AND');
+  assertEqual(f.C, false, 'C selalu reset untuk AND');
+  assertEqual(f.N, false, 'N');
+  assertEqual(f.P, true, 'paritas genap (0FH punya 4 bit satu)');
+});
+
+test('OR mematikan H dan C', () => {
+  const { cpu } = runProgram('LD A, 0F0H\nOR 0FH\nHALT');
+  const f = cpu.registers.flags;
+  assertEqual(cpu.registers.registers8.A, 0xFF, 'A');
+  assertEqual(f.H, false, 'H');
+  assertEqual(f.C, false, 'C');
+  assertEqual(f.S, true, 'S (bit 7 menyala)');
+  assertEqual(f.P, true, 'paritas genap (8 bit satu)');
+});
+
+test('XOR A mengosongkan A dan menyalakan Zero', () => {
+  const { cpu } = runProgram('LD A, 5AH\nXOR A\nHALT');
+  const f = cpu.registers.flags;
+  assertEqual(cpu.registers.registers8.A, 0x00, 'A');
+  assertEqual(f.Z, true, 'Z');
+  assertEqual(f.C, false, 'C');
+  assertEqual(f.H, false, 'H');
+});
+
+test('CPL membalik semua bit dan menyalakan H serta N', () => {
+  const { cpu } = runProgram('LD A, 0FH\nCPL\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0xF0, 'A');
+  assertEqual(cpu.registers.flags.H, true, 'H');
+  assertEqual(cpu.registers.flags.N, true, 'N');
+});
+
+test('NEG mengambil komplemen dua dan menyalakan Carry bila A bukan nol', () => {
+  const { cpu } = runProgram('LD A, 01H\nNEG\nHALT');
+  const f = cpu.registers.flags;
+  assertEqual(cpu.registers.registers8.A, 0xFF, 'A');
+  assertEqual(f.C, true, 'C');
+  assertEqual(f.N, true, 'N');
+  assertEqual(f.S, true, 'S');
+});
+
+test('NEG atas nol tidak menyalakan Carry', () => {
+  const { cpu } = runProgram('LD A, 00H\nNEG\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x00, 'A');
+  assertEqual(cpu.registers.flags.C, false, 'C');
+  assertEqual(cpu.registers.flags.Z, true, 'Z');
+});
+
+test('SCF menyalakan Carry, CCF membalikkannya dan menyalin C lama ke H', () => {
+  const afterScf = runProgram('SCF\nHALT').cpu.registers.flags;
+  assertEqual(afterScf.C, true, 'C setelah SCF');
+  assertEqual(afterScf.H, false, 'H setelah SCF');
+  assertEqual(afterScf.N, false, 'N setelah SCF');
+
+  const afterCcf = runProgram('SCF\nCCF\nHALT').cpu.registers.flags;
+  assertEqual(afterCcf.C, false, 'C setelah CCF');
+  assertEqual(afterCcf.H, true, 'H menyimpan nilai C sebelumnya');
+  assertEqual(afterCcf.N, false, 'N setelah CCF');
+});
+
+// ─────────────────────────────────────────────────────────────
+section('ALU — rotasi & geser');
+
+test('RLCA memutar kiri melingkar, bit 7 ke Carry dan ke bit 0', () => {
+  const { cpu } = runProgram('LD A, 85H\nRLCA\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x0B, 'A');
+  assertEqual(cpu.registers.flags.C, true, 'C');
+});
+
+test('RLA memutar kiri melalui Carry', () => {
+  const { cpu } = runProgram('LD A, 85H\nRLA\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x0A, 'A (Carry awal 0 masuk ke bit 0)');
+  assertEqual(cpu.registers.flags.C, true, 'C menerima bit 7 lama');
+});
+
+test('RRCA memutar kanan melingkar, bit 0 ke Carry dan ke bit 7', () => {
+  const { cpu } = runProgram('LD A, 85H\nRRCA\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0xC2, 'A');
+  assertEqual(cpu.registers.flags.C, true, 'C');
+});
+
+test('RRA memutar kanan melalui Carry', () => {
+  const { cpu } = runProgram('LD A, 85H\nRRA\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x42, 'A (Carry awal 0 masuk ke bit 7)');
+  assertEqual(cpu.registers.flags.C, true, 'C menerima bit 0 lama');
+});
+
+test('SLA menggeser kiri dan memasukkan nol di bit 0', () => {
+  const { cpu } = runProgram('LD B, 85H\nSLA B\nHALT');
+  assertEqual(cpu.registers.registers8.B, 0x0A, 'B');
+  assertEqual(cpu.registers.flags.C, true, 'C');
+});
+
+test('SRA menggeser kanan dan mempertahankan bit tanda', () => {
+  const { cpu } = runProgram('LD B, 85H\nSRA B\nHALT');
+  assertEqual(cpu.registers.registers8.B, 0xC2, 'B (bit 7 dipertahankan)');
+  assertEqual(cpu.registers.flags.C, true, 'C');
+});
+
+test('SRL menggeser kanan dan memasukkan nol di bit 7', () => {
+  const { cpu } = runProgram('LD B, 85H\nSRL B\nHALT');
+  assertEqual(cpu.registers.registers8.B, 0x42, 'B');
+  assertEqual(cpu.registers.flags.C, true, 'C');
+  assertEqual(cpu.registers.flags.S, false, 'S selalu mati setelah SRL');
+});
+
+test('RLC dan RRC pada register selain A', () => {
+  assertEqual(runProgram('LD B, 85H\nRLC B\nHALT').cpu.registers.registers8.B, 0x0B, 'RLC B');
+  assertEqual(runProgram('LD B, 85H\nRRC B\nHALT').cpu.registers.registers8.B, 0xC2, 'RRC B');
+});
+
+test('RR menggeser kanan melalui Carry sampai nol', () => {
+  const { cpu } = runProgram('LD B, 01H\nRR B\nHALT');
+  assertEqual(cpu.registers.registers8.B, 0x00, 'B');
+  assertEqual(cpu.registers.flags.C, true, 'C menerima bit 0');
+  assertEqual(cpu.registers.flags.Z, true, 'Z');
+});
+
+// ─────────────────────────────────────────────────────────────
+section('ALU — manipulasi bit');
+
+test('BIT atas bit yang menyala mematikan Zero', () => {
+  const { cpu } = runProgram('LD A, 80H\nBIT 7, A\nHALT');
+  const f = cpu.registers.flags;
+  assertEqual(f.Z, false, 'Z');
+  assertEqual(f.H, true, 'H selalu set');
+  assertEqual(f.N, false, 'N selalu reset');
+  assertEqual(f.S, true, 'S menyala hanya saat menguji bit 7 yang set');
+  assertEqual(f.P, false, 'P/V mengikuti Z');
+});
+
+test('BIT atas bit yang mati menyalakan Zero', () => {
+  const { cpu } = runProgram('LD A, 80H\nBIT 0, A\nHALT');
+  const f = cpu.registers.flags;
+  assertEqual(f.Z, true, 'Z');
+  assertEqual(f.P, true, 'P/V mengikuti Z');
+  assertEqual(f.S, false, 'S mati untuk bit selain 7');
+});
+
+test('BIT tidak mengubah nilai register yang diuji', () => {
+  const { cpu } = runProgram('LD A, 5AH\nBIT 3, A\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x5A, 'A tetap');
+});
+
+test('SET dan RES mengubah bit yang ditunjuk', () => {
+  assertEqual(runProgram('LD B, 00H\nSET 3, B\nHALT').cpu.registers.registers8.B, 0x08, 'SET 3');
+  assertEqual(runProgram('LD B, 0FFH\nRES 3, B\nHALT').cpu.registers.registers8.B, 0xF7, 'RES 3');
+});
+
+// ─────────────────────────────────────────────────────────────
+section('ALU — ADC / SBC');
+
+test('ADC menambahkan Carry yang sedang menyala', () => {
+  const { cpu } = runProgram('SCF\nLD A, 10H\nADC A, 05H\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x16, 'A = 10H + 05H + 1');
+});
+
+test('SBC mengurangi Carry yang sedang menyala', () => {
+  const { cpu } = runProgram('SCF\nLD A, 10H\nSBC A, 05H\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x0A, 'A = 10H - 05H - 1');
+  assertEqual(cpu.registers.flags.N, true, 'N');
+});
+
+test('ADD HL, rr menjumlahkan pasangan 16-bit', () => {
+  const { cpu } = runProgram('LD HL, 1000H\nLD BC, 2000H\nADD HL, BC\nHALT');
+  assertEqual(cpu.registers.registers8.H, 0x30, 'H');
+  assertEqual(cpu.registers.registers8.L, 0x00, 'L');
+});
+
+test('ADC HL, rr ikut menambahkan Carry', () => {
+  const { cpu } = runProgram('SCF\nLD HL, 1000H\nLD BC, 2000H\nADC HL, BC\nHALT');
+  assertEqual(cpu.registers.registers8.H, 0x30, 'H');
+  assertEqual(cpu.registers.registers8.L, 0x01, 'L');
+});
+
+test('SBC HL, rr mengurangi pasangan 16-bit', () => {
+  const { cpu } = runProgram('LD HL, 5000H\nLD BC, 1000H\nSBC HL, BC\nHALT');
+  assertEqual(cpu.registers.registers8.H, 0x40, 'H');
+  assertEqual(cpu.registers.flags.N, true, 'N');
+});
+
+test('ADD HL menyalakan Carry saat melewati FFFFH', () => {
+  const { cpu } = runProgram('LD HL, 0FFFFH\nLD BC, 0002H\nADD HL, BC\nHALT');
+  assertEqual(cpu.registers.registers8.H, 0x00, 'H');
+  assertEqual(cpu.registers.registers8.L, 0x01, 'L');
+  assertEqual(cpu.registers.flags.C, true, 'C');
+});
+
+// ─────────────────────────────────────────────────────────────
+section('ALU — DAA (koreksi desimal BCD)');
+
+test('DAA mengoreksi penjumlahan BCD sederhana: 19 + 01 = 20', () => {
+  const { cpu } = runProgram('LD A, 19H\nADD A, 01H\nDAA\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x20, 'A');
+  assertEqual(cpu.registers.flags.C, false, 'C');
+});
+
+test('DAA mengoreksi penjumlahan dengan bawaan nibble: 28 + 39 = 67', () => {
+  const { cpu } = runProgram('LD A, 28H\nADD A, 39H\nDAA\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x67, 'A');
+  assertEqual(cpu.registers.flags.C, false, 'C');
+});
+
+test('DAA menyalakan Carry saat hasil BCD melewati 99: 99 + 01 = 00', () => {
+  const { cpu } = runProgram('LD A, 99H\nADD A, 01H\nDAA\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x00, 'A');
+  assertEqual(cpu.registers.flags.C, true, 'C menandakan ratusan');
+  assertEqual(cpu.registers.flags.Z, true, 'Z');
+});
+
+test('DAA mengoreksi pengurangan BCD: 42 - 13 = 29', () => {
+  const { cpu } = runProgram('LD A, 42H\nSUB 13H\nDAA\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x29, 'A');
+  assertEqual(cpu.registers.flags.N, true, 'N dipertahankan');
+  assertEqual(cpu.registers.flags.C, false, 'C');
+});
+
+test('DAA mempertahankan Carry pinjaman pada pengurangan BCD: 15 - 40', () => {
+  // C=1 dan H=0 setelah SUB, jadi koreksinya -60H saja (tabel Z-80 baris N=1).
+  const { cpu } = runProgram('LD A, 15H\nSUB 40H\nDAA\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x75, 'A');
+  assertEqual(cpu.registers.flags.C, true, 'C tetap menyala');
+  assertEqual(cpu.registers.flags.N, true, 'N');
+});
+
+// ─────────────────────────────────────────────────────────────
+section('ALU — pertukaran register');
+
+test('EX DE, HL menukar kedua pasangan', () => {
+  const { cpu } = runProgram('LD DE, 1234H\nLD HL, 5678H\nEX DE, HL\nHALT');
+  assertEqual(cpu.registers.registers8.D, 0x56, 'D');
+  assertEqual(cpu.registers.registers8.E, 0x78, 'E');
+  assertEqual(cpu.registers.registers8.H, 0x12, 'H');
+  assertEqual(cpu.registers.registers8.L, 0x34, 'L');
+});
+
+test('EXX dua kali mengembalikan register semula', () => {
+  const { cpu } = runProgram('LD BC, 1111H\nEXX\nLD BC, 2222H\nEXX\nHALT');
+  assertEqual(cpu.registers.registers8.B, 0x11, 'B');
+  assertEqual(cpu.registers.registers8.C, 0x11, 'C');
+});
+
+// ─────────────────────────────────────────────────────────────
+section('ALU — instruksi blok');
+
+test('LDI menyalin satu byte lalu memajukan pointer', () => {
+  const { cpu } = runProgram(
+    'LD HL, 1000H\nLD DE, 2000H\nLD BC, 0001H\nLDI\nHALT',
+    100,
+    { 0x1000: 0xAA },
+  );
+  assertEqual(cpu.memory.bytes[0x2000], 0xAA, 'byte tersalin');
+  assertEqual(cpu.registers.registers8.H, 0x10, 'H');
+  assertEqual(cpu.registers.registers8.L, 0x01, 'HL maju');
+  assertEqual(cpu.registers.registers8.E, 0x01, 'DE maju');
+  assertEqual(cpu.registers.flags.P, false, 'P/V mati saat BC habis');
+  assertEqual(cpu.registers.flags.N, false, 'N');
+});
+
+test('LDIR menyalin seluruh blok', () => {
+  const { cpu } = runProgram(
+    'LD HL, 1000H\nLD DE, 2000H\nLD BC, 0003H\nLDIR\nHALT',
+    100,
+    { 0x1000: 0x11, 0x1001: 0x22, 0x1002: 0x33 },
+  );
+  assertEqual(cpu.memory.bytes[0x2000], 0x11, 'byte 1');
+  assertEqual(cpu.memory.bytes[0x2001], 0x22, 'byte 2');
+  assertEqual(cpu.memory.bytes[0x2002], 0x33, 'byte 3');
+  assertEqual(cpu.registers.registers8.B, 0x00, 'B');
+  assertEqual(cpu.registers.registers8.C, 0x00, 'C');
+});
+
+test('LDDR menyalin blok mundur', () => {
+  const { cpu } = runProgram(
+    'LD HL, 1002H\nLD DE, 2002H\nLD BC, 0003H\nLDDR\nHALT',
+    100,
+    { 0x1000: 0x11, 0x1001: 0x22, 0x1002: 0x33 },
+  );
+  assertEqual(cpu.memory.bytes[0x2000], 0x11, 'byte 1');
+  assertEqual(cpu.memory.bytes[0x2002], 0x33, 'byte 3');
+});
+
+test('LDIR dengan BC=0000H menyalin 65536 byte lalu berhenti', () => {
+  // Regresi: pencacah BC dulu tidak dibungkus ke 16-bit, sehingga nilainya
+  // terus menegatif dan loopnya tidak pernah berhenti — membekukan tab.
+  const { cpu } = runProgram('LD HL, 1000H\nLD DE, 2000H\nLD BC, 0000H\nLDIR\nHALT', 100);
+  assertEqual(cpu.registers.registers8.B, 0x00, 'B');
+  assertEqual(cpu.registers.registers8.C, 0x00, 'C');
+  assertEqual(cpu.halted, true, 'mencapai HALT');
+});
+
+test('CPI menyalakan Zero ketika byte cocok', () => {
+  const { cpu } = runProgram(
+    'LD A, 55H\nLD HL, 1000H\nLD BC, 0001H\nCPI\nHALT',
+    100,
+    { 0x1000: 0x55 },
+  );
+  assertEqual(cpu.registers.flags.Z, true, 'Z');
+  assertEqual(cpu.registers.flags.N, true, 'N');
+  assertEqual(cpu.registers.registers8.A, 0x55, 'A tidak berubah');
+});
+
+test('CPIR berhenti pada byte yang dicari', () => {
+  const { cpu } = runProgram(
+    'LD A, 22H\nLD HL, 1000H\nLD BC, 0003H\nCPIR\nHALT',
+    100,
+    { 0x1000: 0x11, 0x1001: 0x22, 0x1002: 0x33 },
+  );
+  assertEqual(cpu.registers.flags.Z, true, 'Z menandakan ketemu');
+  assertEqual(cpu.registers.registers8.L, 0x02, 'HL berhenti tepat setelah byte yang cocok');
+  assertEqual(cpu.registers.registers8.C, 0x01, 'BC menyimpan sisa');
+  assertEqual(cpu.registers.flags.P, true, 'P/V menyala karena BC belum habis');
+});
+
+test('CPIR yang tidak menemukan apa pun menghabiskan BC', () => {
+  const { cpu } = runProgram(
+    'LD A, 99H\nLD HL, 1000H\nLD BC, 0003H\nCPIR\nHALT',
+    100,
+    { 0x1000: 0x11, 0x1001: 0x22, 0x1002: 0x33 },
+  );
+  assertEqual(cpu.registers.flags.Z, false, 'Z mati');
+  assertEqual(cpu.registers.registers8.C, 0x00, 'BC habis');
+  assertEqual(cpu.registers.flags.P, false, 'P/V mati saat BC habis');
 });
 
 // ─────────────────────────────────────────────────────────────

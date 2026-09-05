@@ -231,13 +231,15 @@ export function aluDaa(a: Byte, flags: CPUFlags): ALUResult {
   let carry = flags.C;
 
   if (flags.N) {
-    // After subtraction
-    if (flags.H || (a & 0x0F) > 9) {
+    // Setelah pengurangan, koreksi hanya bergantung pada H dan C — bukan pada
+    // nilai nibble. Menguji nibble di sini (seperti pada jalur penjumlahan)
+    // memberi hasil berbeda dari Z-80 asli ketika A bukan BCD yang sah, dan
+    // juga keliru menyalakan Carry padahal C harus dipertahankan apa adanya.
+    if (flags.H) {
       correction -= 0x06;
     }
-    if (flags.C || a > 0x99) {
+    if (flags.C) {
       correction -= 0x60;
-      carry = true;
     }
   } else {
     // After addition
