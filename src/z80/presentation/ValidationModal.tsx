@@ -531,6 +531,8 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
                         >
                           <option value="Pendidikan Teknik Elektro">Pendidikan Teknik Elektro</option>
                           <option value="Teknik Elektro">Teknik Elektro</option>
+                          <option value="Pendidikan Teknik Elektronika">Pendidikan Teknik Elektronika</option>
+                          <option value="Teknik Elektronika">Teknik Elektronika</option>
                         </select>
                         <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                       </div>

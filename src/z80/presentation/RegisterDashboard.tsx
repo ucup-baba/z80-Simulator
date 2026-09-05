@@ -80,7 +80,8 @@ interface FlagBitDisplayProps {
 
 const FlagBitDisplay: React.FC<FlagBitDisplayProps> = ({ bit, name, value, isDark }) => {
   return (
-    <div className="flex items-center justify-between px-1 lg:px-2 py-0.5 lg:py-1" title={`Bit ${bit}`}>
+    <div className="flex flex-col items-center gap-0.5 px-1 lg:px-2 py-0.5 lg:py-1" title={`Bit ${bit}: ${name}`}>
+      <span className={`text-[8px] lg:text-[10px] font-mono ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>b{bit}</span>
       <span className={`text-[10px] lg:text-xs font-medium ${isDark ? 'text-zinc-400' : 'text-gray-500'}`} style={{ fontFamily: 'var(--font-mono)' }}>{name}</span>
       <div className={`w-4 h-4 lg:w-5 lg:h-5 rounded flex items-center justify-center text-[10px] lg:text-xs font-bold transition-all duration-300 ${
         value
@@ -155,8 +156,13 @@ export const RegisterDashboard: React.FC<RegisterDashboardProps> = ({
             </div>
 
             <div className="pt-1 lg:pt-2">
-              <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-1 lg:mb-2`} style={{ fontFamily: 'var(--font-sans)' }}>Flags (F)</h3>
-              <div className={`${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded p-1 lg:p-1.5 grid grid-cols-4 lg:grid-cols-2 gap-1 lg:gap-1.5`}>
+              <div className="flex items-center justify-between mb-1 lg:mb-2">
+                <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider`} style={{ fontFamily: 'var(--font-sans)' }}>Flags (F)</h3>
+                <span className={`text-[10px] lg:text-xs font-bold px-1.5 py-0.5 rounded border ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-gray-100 border-gray-200 text-gray-700'}`} style={{ fontFamily: 'var(--font-mono)' }}>
+                  F = {((registers.flags.S ? 128 : 0) | (registers.flags.Z ? 64 : 0) | (registers.flags.Y ? 32 : 0) | (registers.flags.H ? 16 : 0) | (registers.flags.X ? 8 : 0) | (registers.flags.P ? 4 : 0) | (registers.flags.N ? 2 : 0) | (registers.flags.C ? 1 : 0)).toString(16).toUpperCase().padStart(2, '0')}H
+                </span>
+              </div>
+              <div className={`${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded p-1 lg:p-1.5 grid grid-cols-4 lg:grid-cols-4 gap-1 lg:gap-1.5`}>
                 <FlagBitDisplay bit={7} name="SF" value={registers.flags.S} isDark={isDark} />
                 <FlagBitDisplay bit={6} name="ZF" value={registers.flags.Z} isDark={isDark} />
                 <FlagBitDisplay bit={5} name="YF" value={registers.flags.Y} isDark={isDark} />
@@ -183,8 +189,13 @@ export const RegisterDashboard: React.FC<RegisterDashboardProps> = ({
             </div>
 
             <div className="pt-1 lg:pt-2">
-              <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider mb-1 lg:mb-2`} style={{ fontFamily: 'var(--font-sans)' }}>Alternate Flags (F')</h3>
-              <div className={`${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded p-1 lg:p-1.5 grid grid-cols-4 lg:grid-cols-2 gap-1 lg:gap-1.5`}>
+              <div className="flex items-center justify-between mb-1 lg:mb-2">
+                <h3 className={`text-[10px] lg:text-xs font-semibold ${sectionLabel} uppercase tracking-wider`} style={{ fontFamily: 'var(--font-sans)' }}>Alternate Flags (F')</h3>
+                <span className={`text-[10px] lg:text-xs font-bold px-1.5 py-0.5 rounded border ${isDark ? 'bg-zinc-800 border-zinc-700 text-zinc-300' : 'bg-gray-100 border-gray-200 text-gray-700'}`} style={{ fontFamily: 'var(--font-mono)' }}>
+                  F' = {((registers.alternate.flags.S ? 128 : 0) | (registers.alternate.flags.Z ? 64 : 0) | (registers.alternate.flags.Y ? 32 : 0) | (registers.alternate.flags.H ? 16 : 0) | (registers.alternate.flags.X ? 8 : 0) | (registers.alternate.flags.P ? 4 : 0) | (registers.alternate.flags.N ? 2 : 0) | (registers.alternate.flags.C ? 1 : 0)).toString(16).toUpperCase().padStart(2, '0')}H
+                </span>
+              </div>
+              <div className={`${isDark ? 'bg-zinc-900/50 border-zinc-700/50' : 'bg-gray-50 border-gray-200'} border rounded p-1 lg:p-1.5 grid grid-cols-4 lg:grid-cols-4 gap-1 lg:gap-1.5`}>
                 <FlagBitDisplay bit={7} name="SF'" value={registers.alternate.flags.S} isDark={isDark} />
                 <FlagBitDisplay bit={6} name="ZF'" value={registers.alternate.flags.Z} isDark={isDark} />
                 <FlagBitDisplay bit={5} name="YF'" value={registers.alternate.flags.Y} isDark={isDark} />

@@ -120,7 +120,27 @@ export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClos
               <h5 className="text-sm font-bold text-emerald-400 mb-1 flex items-center gap-1.5">
                 <Database className="w-3.5 h-3.5" /> Memory Editor
               </h5>
-              <p className={`text-sm ${textMuted}`}>Panel untuk menginspeksi dan mengubah langsung isi memori RAM (0000H–FFFFH) baik dalam format Hexadecimal maupun ASCII.</p>
+              <p className={`text-sm ${textMuted} mb-2`}>Panel untuk menginspeksi dan mengubah langsung isi memori RAM (0000H–FFFFH) baik dalam format Hexadecimal maupun ASCII.</p>
+              
+              <details className={`mt-2 rounded-lg border overflow-hidden group ${isDark ? 'bg-zinc-900/60 border-zinc-800' : 'bg-gray-100/80 border-gray-200'}`}>
+                <summary className={`px-2.5 py-2 text-xs font-bold flex items-center gap-1.5 cursor-pointer select-none transition-colors ${isDark ? 'text-emerald-300 hover:bg-zinc-800/60' : 'text-emerald-600 hover:bg-gray-200/60'}`}>
+                  <ChevronRight className="w-3 h-3 transition-transform group-open:rotate-90" />
+                  <Info className="w-3 h-3" /> Cara Input Data Langsung di Memory Editor
+                </summary>
+                <div className="px-2.5 pb-2.5">
+                  <ol className={`text-xs space-y-1.5 ${textMuted} list-decimal list-inside`}>
+                    <li>Buka tab <strong>Memory Editor</strong> di panel kiri (ikon <em>Database</em>).</li>
+                    <li>Navigasi ke halaman memori yang diinginkan menggunakan tombol <strong>◀ Prev / Next ▶</strong>, atau ketik alamat hex di kolom <strong>Jump to Address</strong> lalu tekan Enter.</li>
+                    <li><strong>Double-click</strong> (klik dua kali) pada sel byte yang ingin diubah — sel akan berubah menjadi <em>input field</em>.</li>
+                    <li>Ketik nilai hexadecimal baru (2 digit, contoh: <code className={`px-1 py-0.5 rounded ${isDark ? 'bg-zinc-800 text-emerald-400' : 'bg-gray-200 text-emerald-700'}`}>FF</code>, <code className={`px-1 py-0.5 rounded ${isDark ? 'bg-zinc-800 text-emerald-400' : 'bg-gray-200 text-emerald-700'}`}>0A</code>, <code className={`px-1 py-0.5 rounded ${isDark ? 'bg-zinc-800 text-emerald-400' : 'bg-gray-200 text-emerald-700'}`}>42</code>).</li>
+                    <li>Tekan <strong>Enter</strong> untuk menyimpan perubahan, atau <strong>Esc</strong> untuk membatalkan.</li>
+                    <li>Perubahan langsung terlihat di panel <strong>Memory Viewer</strong> di sisi kanan.</li>
+                  </ol>
+                  <p className={`text-[11px] mt-2 ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
+                    💡 Tip: Nilai yang valid adalah 00–FF (0–255 desimal). Setiap sel merepresentasikan 1 byte (8-bit) memori.
+                  </p>
+                </div>
+              </details>
             </div>
 
             <div className={`p-3 rounded-lg border ${cardBg}`}>

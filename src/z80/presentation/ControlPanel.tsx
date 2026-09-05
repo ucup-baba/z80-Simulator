@@ -29,6 +29,8 @@ interface ControlPanelProps {
   onShowShortcuts?: () => void;
   // Example programs
   onLoadExample?: (id: string) => void;
+  // Blocked run/step feedback
+  onRunBlocked?: (reason: string) => void;
 }
 
 interface ControlButtonProps {
@@ -82,7 +84,7 @@ const ControlButton: React.FC<ControlButtonProps> = ({
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   onLoad, onStep, onRun, onPause, onReset, isRunning, hasProgram, isCodeDirty = false, halted = false,
-  sourceCode = '', onImportCode, speed = 50, onSpeedChange, onShowShortcuts, onLoadExample,
+  sourceCode = '', onImportCode, speed = 50, onSpeedChange, onShowShortcuts, onLoadExample, onRunBlocked,
 }) => {
   const { isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,25 +153,44 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         />
 
         <ControlButton
-          onClick={onStep}
-          disabled={isRunning || !canStepOrRun}
+          onClick={() => {
+            if (isRunning) return;
+            if (!canStepOrRun) {
+              if (!hasProgram) onRunBlocked?.('Program belum dimuat! Tulis kode assembly di editor, lalu klik tombol Load untuk memuat program ke memori.');
+              else if (isCodeDirty) onRunBlocked?.('Kode telah diubah! Klik tombol Load ulang untuk memuat perubahan ke memori.');
+              else if (halted) onRunBlocked?.('Program sudah selesai (HALT). Klik tombol Reset untuk menjalankan ulang.');
+              return;
+            }
+            onStep();
+          }}
           variant="secondary"
           isDark={isDark}
           icon={<StepForward className="w-4 h-4" />}
           label="Step"
           shortcut="⌃S"
-          title={isCodeDirty ? "Kode telah diubah. Klik Load terlebih dahulu." : "Eksekusi 1 instruksi"}
+          title={!hasProgram ? "Program belum dimuat. Klik Load terlebih dahulu." : isCodeDirty ? "Kode telah diubah. Klik Load terlebih dahulu." : "Eksekusi 1 instruksi"}
         />
 
         <ControlButton
-          onClick={isRunning ? (onPause || (() => {})) : onRun}
-          disabled={!canStepOrRun && !isRunning}
+          onClick={() => {
+            if (isRunning) {
+              (onPause || (() => {}))();
+              return;
+            }
+            if (!canStepOrRun) {
+              if (!hasProgram) onRunBlocked?.('Program belum dimuat! Tulis kode assembly di editor, lalu klik tombol Load untuk memuat program ke memori.');
+              else if (isCodeDirty) onRunBlocked?.('Kode telah diubah! Klik tombol Load ulang untuk memuat perubahan ke memori.');
+              else if (halted) onRunBlocked?.('Program sudah selesai (HALT). Klik tombol Reset untuk menjalankan ulang.');
+              return;
+            }
+            onRun();
+          }}
           variant={isRunning ? "danger" : "success"}
           isDark={isDark}
           icon={isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           label={isRunning ? "Pause" : "Run"}
           shortcut="⌃R"
-          title={isCodeDirty ? "Kode telah diubah. Klik Load terlebih dahulu." : (isRunning ? "Jeda eksekusi" : "Jalankan program")}
+          title={!hasProgram ? "Program belum dimuat. Klik Load terlebih dahulu." : isCodeDirty ? "Kode telah diubah. Klik Load terlebih dahulu." : (isRunning ? "Jeda eksekusi" : "Jalankan program")}
         />
 
         <ControlButton

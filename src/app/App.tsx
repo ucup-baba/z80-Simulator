@@ -431,6 +431,11 @@ export default function App() {
     }
   }, [handleCodeChange, store]);
 
+  // Toast feedback when Run/Step is clicked without program
+  const handleRunBlocked = useCallback((reason: string) => {
+    addToast(reason, 'warning');
+  }, [addToast]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -925,6 +930,7 @@ export default function App() {
           }}
           onShowShortcuts={() => setShowShortcuts(true)}
           onLoadExample={handleLoadExample}
+          onRunBlocked={handleRunBlocked}
         />
       </div>
 
