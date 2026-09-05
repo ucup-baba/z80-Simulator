@@ -12,10 +12,9 @@ import { toWord } from './cpuStateFactory';
  * Increments the R register (refresh counter).
  * Only the lower 7 bits (0-6) increment; bit 7 is preserved.
  */
-function incrementR(state: CPUState, amount: number): void {
-  const r = state.registers.special.R;
+function incrementedR(r: number, amount: number): number {
   const bit7 = r & 0x80;
-  state.registers.special.R = bit7 | ((r + amount) & 0x7F);
+  return bit7 | ((r + amount) & 0x7F);
 }
 
 /**
@@ -286,8 +285,23 @@ export function step(state: CPUState, program: Program): ExecutionResult {
 
   const instruction = program.instructions[index];
 
+  // Register refresh (R) bertambah pada setiap siklus M1, yaitu ketika
+  // instruksi diambil — sebelum badannya dijalankan. Urutan ini penting:
+  // LD A,R harus membaca nilai yang sudah termasuk pengambilan instruksi
+  // itu sendiri, sebagaimana perangkat kerasnya.
+  const fetched: CPUState = {
+    ...state,
+    registers: {
+      ...state.registers,
+      special: {
+        ...state.registers.special,
+        R: incrementedR(state.registers.special.R, getM1Cycles(instruction)),
+      },
+    },
+  };
+
   // DECODE & EXECUTE: Execute the instruction
-  const result = executeInstruction(state, instruction);
+  const result = executeInstruction(fetched, instruction);
 
   if (!result.success) {
     // Set error state
@@ -305,9 +319,6 @@ export function step(state: CPUState, program: Program): ExecutionResult {
   // Update performance counters
   result.updatedState.performance.instructionsExecuted += 1;
   result.updatedState.performance.clockCycles += getInstructionCycles(instruction);
-
-  // Update R register (refresh counter) - increments on each M1 cycle
-  incrementR(result.updatedState, getM1Cycles(instruction));
 
   // Update last instruction
   result.updatedState.lastInstruction = {

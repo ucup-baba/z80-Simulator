@@ -1007,15 +1007,29 @@ test('LD I, A tidak menyentuh flag', () => {
 });
 
 test('LD R, A menulis pencacah refresh', () => {
-  // R terus berdetak mengikuti siklus M1, jadi nilainya bertambah lagi setelah
-  // ditulis: dua untuk LD R,A yang berprefiks ED, dan seterusnya.
+  // Pengambilan LD R,A menaikkan R lebih dulu, lalu badan instruksinya menimpa
+  // nilai itu dengan A. Jadi yang tersisa hanya detak HALT sesudahnya.
   const { cpu } = runProgram('LD A, 40H\nLD R, A\nHALT');
-  assertEqual(cpu.registers.special.R, 0x43, 'R = 40H ditulis, lalu berdetak untuk LD R,A dan HALT');
+  assertEqual(cpu.registers.special.R, 0x41, 'R = 40H ditulis, lalu satu detak untuk HALT');
 });
 
 test('LD A, R membaca pencacah refresh', () => {
   const { cpu } = runProgram('LD A, 40H\nLD R, A\nLD A, R\nHALT');
-  assertEqual(cpu.registers.registers8.A, 0x42, 'A membaca R setelah detak LD R,A');
+  assertEqual(cpu.registers.registers8.A, 0x42, 'A membaca R termasuk dua detak pengambilan LD A,R');
+});
+
+test('LD A, R menghitung pengambilan instruksinya sendiri', () => {
+  // Pembeda antara urutan yang benar dan yang keliru. R bertambah saat
+  // instruksi diambil, sebelum dijalankan, jadi LD A,R ikut menghitung dua
+  // siklus M1 miliknya: dua NOP (2) ditambah pengambilan LD A,R (2) = 4.
+  // Menaikkan R setelah eksekusi akan menghasilkan 2.
+  const { cpu } = runProgram('NOP\nNOP\nLD A, R\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x04, 'A');
+});
+
+test('Total R tidak berubah oleh urutan penambahannya', () => {
+  const { cpu, steps } = runProgram('NOP\nNOP\nNOP\nHALT');
+  assertEqual(cpu.registers.special.R, steps, 'R tetap sama dengan jumlah siklus M1');
 });
 
 test('Hanya A yang boleh menjadi tujuan register khusus', () => {
