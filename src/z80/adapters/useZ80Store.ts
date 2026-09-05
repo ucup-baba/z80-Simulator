@@ -32,6 +32,20 @@ interface ExecutionLogEntry {
   type: 'info' | 'error' | 'success';
 }
 
+/**
+ * Batas jumlah entri log eksekusi.
+ *
+ * Run bisa berjalan sampai 5000 langkah, dan setiap langkah menyalin ulang
+ * array log lalu memicu render React. Tanpa batas, biaya penyalinan tumbuh
+ * mengikuti panjang log; dengan batas ini biayanya tetap.
+ */
+const MAX_LOG_ENTRIES = 500;
+
+function appendLog(log: ExecutionLogEntry[], entry: ExecutionLogEntry): ExecutionLogEntry[] {
+  if (log.length < MAX_LOG_ENTRIES) return [...log, entry];
+  return [...log.slice(log.length - MAX_LOG_ENTRIES + 1), entry];
+}
+
 interface Z80Store {
   // State
   cpu: CPUState;
@@ -157,6 +171,8 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
       }
 
       const cpu = createCPUState();
+      // Mulai eksekusi dari alamat ORG program, bukan selalu dari 0000H.
+      cpu.registers.registers16.PC = program.orgAddress;
 
       set({
         program,
@@ -202,28 +218,22 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
 
     if (!program) {
       set({
-        executionLog: [
-          ...executionLog,
-          {
+        executionLog: appendLog(executionLog, {
             timestamp: Date.now(),
             message: 'No program loaded. Click "Load" first.',
             type: 'error',
-          },
-        ],
+          }),
       });
       return false;
     }
 
     if (cpu.halted) {
       set({
-        executionLog: [
-          ...executionLog,
-          {
+        executionLog: appendLog(executionLog, {
             timestamp: Date.now(),
             message: 'CPU is halted. Click "Reset" to restart.',
             type: 'error',
-          },
-        ],
+          }),
       });
       return false;
     }
@@ -238,7 +248,7 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
 
     set({
       cpu: result.updatedState,
-      executionLog: [...executionLog, newLogEntry],
+      executionLog: appendLog(executionLog, newLogEntry),
     });
 
     return result.success && !result.updatedState.halted && !result.updatedState.error;
@@ -250,28 +260,22 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
 
     if (!program) {
       set({
-        executionLog: [
-          ...executionLog,
-          {
+        executionLog: appendLog(executionLog, {
             timestamp: Date.now(),
             message: 'No program loaded. Click "Load" first.',
             type: 'error',
-          },
-        ],
+          }),
       });
       return;
     }
 
     if (cpu.halted) {
       set({
-        executionLog: [
-          ...executionLog,
-          {
+        executionLog: appendLog(executionLog, {
             timestamp: Date.now(),
             message: 'CPU is halted. Click "Reset" to restart.',
             type: 'error',
-          },
-        ],
+          }),
       });
       return;
     }
@@ -290,14 +294,11 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
         if (stepCount >= maxSteps && !cpu.halted && !cpu.error) {
           const { executionLog } = get();
           set({
-            executionLog: [
-              ...executionLog,
-              {
+            executionLog: appendLog(executionLog, {
                 timestamp: Date.now(),
                 message: `Execution stopped: maximum steps (${maxSteps}) reached.`,
                 type: 'error',
-              },
-            ],
+              }),
           });
         }
         set({ isRunning: false });
@@ -349,11 +350,11 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
       clearTimeout(runTimeoutId);
       runTimeoutId = null;
     }
-    const { cpu, loadedSourceCode, sourceCode } = get();
+    const { cpu, program, loadedSourceCode, sourceCode } = get();
     const isCodeDirty = loadedSourceCode !== null ? (sourceCode !== loadedSourceCode) : true;
 
     set({
-      cpu: resetCPUState(cpu),
+      cpu: resetCPUState(cpu, program?.orgAddress ?? 0),
       isRunning: false,
       isCodeDirty,
       executionLog: [
@@ -377,28 +378,22 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
 
     if (address < 0 || address >= cpu.memory.size) {
       set({
-        executionLog: [
-          ...executionLog,
-          {
+        executionLog: appendLog(executionLog, {
             timestamp: Date.now(),
             message: `Memory write failed: address ${address.toString(16).toUpperCase()}H out of range`,
             type: 'error',
-          },
-        ],
+          }),
       });
       return;
     }
 
     if (value < 0 || value > 0xFF) {
       set({
-        executionLog: [
-          ...executionLog,
-          {
+        executionLog: appendLog(executionLog, {
             timestamp: Date.now(),
             message: `Memory write failed: value ${value} out of range (0-255)`,
             type: 'error',
-          },
-        ],
+          }),
       });
       return;
     }
@@ -408,14 +403,11 @@ export const useZ80Store = create<Z80Store>((set, get) => ({
 
     set({
       cpu: newCpu,
-      executionLog: [
-        ...executionLog,
-        {
+      executionLog: appendLog(executionLog, {
           timestamp: Date.now(),
           message: `Memory write: @${address.toString(16).toUpperCase().padStart(4, '0')}H = ${value.toString(16).toUpperCase().padStart(2, '0')}H`,
           type: 'success',
-        },
-      ],
+        }),
     });
   },
 

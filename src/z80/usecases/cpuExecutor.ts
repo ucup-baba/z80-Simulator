@@ -259,12 +259,17 @@ export function step(state: CPUState, program: Program): ExecutionResult {
 
   const pc = state.registers.registers16.PC;
 
-  // FETCH: Get instruction at current PC
-  if (pc >= program.instructions.length) {
+  // FETCH: Get instruction at current PC.
+  // Program dimuat mulai dari alamat ORG, jadi PC harus digeser dulu
+  // sebelum dipakai sebagai indeks ke daftar instruksi.
+  const index = pc - program.orgAddress;
+
+  if (index < 0 || index >= program.instructions.length) {
+    const last = program.orgAddress + program.instructions.length - 1;
     const errorState = {
       ...state,
       halted: true,
-      error: `Program Counter (${pc}) out of bounds (program has ${program.instructions.length} instructions)`,
+      error: `Program Counter (${toWord(pc).toString(16).toUpperCase().padStart(4, '0')}H) di luar jangkauan program (${toWord(program.orgAddress).toString(16).toUpperCase().padStart(4, '0')}H - ${toWord(last).toString(16).toUpperCase().padStart(4, '0')}H)`,
     };
 
     return {
@@ -274,7 +279,7 @@ export function step(state: CPUState, program: Program): ExecutionResult {
     };
   }
 
-  const instruction = program.instructions[pc];
+  const instruction = program.instructions[index];
 
   // DECODE & EXECUTE: Execute the instruction
   const result = executeInstruction(state, instruction);
@@ -305,11 +310,12 @@ export function step(state: CPUState, program: Program): ExecutionResult {
     output: result.message || '',
   };
 
-  // Increment PC (unless instruction modified it, like JP)
-  // Check if PC was modified by the instruction
-  const pcWasModified = result.updatedState.registers.registers16.PC !== pc;
-
-  if (!pcWasModified && !result.updatedState.halted) {
+  // Increment PC, kecuali instruksinya sendiri yang sudah menetapkan PC (JP/CALL/RET/...).
+  // Memakai penanda `jumped`, bukan membandingkan nilai PC sebelum/sesudah:
+  // lompatan ke diri sendiri seperti "LOOP: DJNZ LOOP" menghasilkan nilai PC
+  // yang sama persis, sehingga perbandingan nilai akan salah menyimpulkan
+  // bahwa tidak terjadi lompatan lalu diam-diam keluar dari loop.
+  if (!result.jumped && !result.updatedState.halted) {
     result.updatedState.registers.registers16.PC = toWord(pc + 1);
   }
 

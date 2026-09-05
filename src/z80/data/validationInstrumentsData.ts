@@ -5,6 +5,8 @@ export interface InstrumentItem {
   sampleCode?: string;
   externalLink?: string;
   externalLinkText?: string;
+  /** Menampilkan tombol pemicu pemasangan PWA pada butir ini. */
+  installPwa?: boolean;
 }
 
 export interface InstrumentAspect {

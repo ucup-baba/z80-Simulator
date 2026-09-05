@@ -9,6 +9,7 @@ import { INSTRUMENTS, InstrumentDefinition } from '../data/validationInstruments
 import { PrintableValidationSheet, ValidationFormState } from './PrintableValidationSheet';
 import { db } from '../../firebase';
 import { collection, getDocs, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
+import { useAuthStore } from '../adapters/useAuthStore';
 
 export interface SavedValidationResponse {
   id: string;
@@ -32,6 +33,8 @@ export interface SavedValidationResponse {
 
 export const ValidationDashboard: React.FC<{ onBackToSimulator: () => void }> = ({ onBackToSimulator }) => {
   const { isDark } = useTheme();
+  const { user, loading: authLoading, loginWithGoogle } = useAuthStore();
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'responses' | 'analysis'>('responses');
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,18 +138,22 @@ export const ValidationDashboard: React.FC<{ onBackToSimulator: () => void }> = 
   };
 
   useEffect(() => {
+    // Menunggu identitas siap: sebelum login, Firestore menolak baca koleksi ini.
+    if (!user) return;
+
     fetchResponses();
 
     // Listen to live updates from Firestore
-    try {
-      const unsub = onSnapshot(collection(db, 'validation_responses'), () => {
-        fetchResponses();
-      });
-      return () => unsub();
-    } catch (e) {
-      // Ignore if offline
-    }
-  }, []);
+    const unsub = onSnapshot(
+      collection(db, 'validation_responses'),
+      () => fetchResponses(),
+      (err) => {
+        // Penolakan izin datang secara asinkron, jadi tidak tertangkap try/catch.
+        console.warn('Firestore live update dihentikan:', err.message);
+      }
+    );
+    return () => unsub();
+  }, [user]);
 
   // Handle Deleting a Response
   const confirmDeleteResponse = async () => {
@@ -321,6 +328,61 @@ export const ValidationDashboard: React.FC<{ onBackToSimulator: () => void }> = 
     }
     return item.evaluationDate || 'Terkirim';
   };
+
+  // ── Gerbang admin ────────────────────────────────────────────────
+  // Dashboard memuat data pribadi validator (nama, NIP/NIDN, tanda tangan),
+  // jadi tidak boleh terbuka hanya karena seseorang menebak URL "?hasil".
+  // Penegakan sesungguhnya ada di firestore.rules; gerbang ini agar peneliti
+  // punya cara masuk yang jelas dan orang lain mendapat pesan yang jelas pula.
+  if (authLoading) {
+    return (
+      <div className={`min-h-screen w-full flex items-center justify-center ${bg}`}>
+        <RefreshCw className="w-6 h-6 animate-spin opacity-40" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className={`min-h-screen w-full flex items-center justify-center p-4 font-sans ${bg}`}>
+        <div className={`w-full max-w-md p-8 rounded-3xl border text-center space-y-5 ${cardBg}`}>
+          <div className="w-16 h-16 rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center mx-auto border border-blue-500/25">
+            <BarChart3 className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl font-bold">Dashboard Hasil Validasi</h1>
+            <p className={`text-sm leading-relaxed ${textMuted}`}>
+              Halaman ini memuat data pribadi para validator. Masuk dengan akun Google peneliti untuk melanjutkan.
+            </p>
+          </div>
+          {loginError && (
+            <p className="text-xs text-red-500 font-medium">{loginError}</p>
+          )}
+          <div className="space-y-2.5">
+            <button
+              onClick={async () => {
+                setLoginError(null);
+                try {
+                  await loginWithGoogle();
+                } catch {
+                  setLoginError('Login gagal. Silakan coba lagi.');
+                }
+              }}
+              className="w-full px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-md"
+            >
+              Masuk dengan Google
+            </button>
+            <button
+              onClick={onBackToSimulator}
+              className={`w-full px-4 py-2.5 rounded-xl border text-sm font-semibold ${isDark ? 'border-zinc-700 hover:bg-zinc-800' : 'border-gray-300 hover:bg-gray-100'}`}
+            >
+              Kembali ke Simulator
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen w-full flex flex-col font-sans ${bg}`}>

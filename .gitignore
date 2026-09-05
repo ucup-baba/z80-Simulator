@@ -4,8 +4,8 @@ dist-ssr
 *.local
 .npmrc
 .firebase
- firebase-debug.log
- firebase-debug.*.log
+firebase-debug.log
+firebase-debug.*.log
 .env
 .env.*
 !.env.example

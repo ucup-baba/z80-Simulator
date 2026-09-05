@@ -116,13 +116,30 @@ function isIndirectSP(value: string): boolean {
 }
 
 /**
- * Parses an operand string into an OperandType
+ * Membungkus alamat hasil resolusi label menjadi operand bernilai.
  */
-function parseOperand(operand: string, labels?: Map<string, number>): OperandType {
+function labelOperand(value: number): OperandType {
+  return value > 0xFF ? { type: 'immediate16', value } : { type: 'immediate8', value };
+}
+
+/**
+ * Parses an operand string into an OperandType
+ *
+ * `preferLabel` dipakai pada posisi target lompatan, di mana nama label harus
+ * menang atas nama register.
+ */
+function parseOperand(operand: string, labels?: Map<string, number>, preferLabel: boolean = false): OperandType {
   const trimmed = operand.trim().toUpperCase();
 
   if (!trimmed) {
     return { type: 'none' };
+  }
+
+  // Tanpa ini, label yang lazim dipilih mahasiswa seperti "L:", "C:", atau "E:"
+  // terbaca sebagai register dan instruksinya gagal dengan pesan "invalid target".
+  // Di posisi target lompatan, nama register memang bukan operand yang sah.
+  if (preferLabel && labels?.has(trimmed)) {
+    return labelOperand(labels.get(trimmed)!);
   }
 
   // Check for (SP)
@@ -180,8 +197,7 @@ function parseOperand(operand: string, labels?: Map<string, number>): OperandTyp
 
   // Check for label reference
   if (labels && labels.has(trimmed)) {
-    const labelIndex = labels.get(trimmed)!;
-    return { type: 'immediate8', value: labelIndex };
+    return labelOperand(labels.get(trimmed)!);
   }
 
   // Parse immediate value
@@ -274,6 +290,21 @@ function normalizeMnemonic(mnemonic: string): Mnemonic {
 
   throw new Error(`Unknown mnemonic: ${mnemonic}`);
 }
+
+/**
+ * Instruksi yang operand pertamanya berupa target lompatan (bukan RST, yang
+ * operandnya adalah nomor vektor restart).
+ */
+const BRANCH_MNEMONICS: Mnemonic[] = [
+  'JP', 'JPNZ', 'JPZ', 'JPC', 'JPNC', 'JPP', 'JPM', 'JPPE', 'JPPO',
+  'JR', 'JRNZ', 'JRZ', 'JRC', 'JRNC', 'DJNZ',
+  'CALL', 'CALLNZ', 'CALLZ', 'CALLC', 'CALLNC', 'CALLP', 'CALLM', 'CALLPE', 'CALLPO',
+];
+
+/** Percabangan yang dikodekan sebagai perpindahan relatif satu byte bertanda. */
+const RELATIVE_BRANCH_MNEMONICS: Mnemonic[] = [
+  'JR', 'JRNZ', 'JRZ', 'JRC', 'JRNC', 'DJNZ',
+];
 
 /**
  * Reassembles operand tokens that may have been split incorrectly.
@@ -382,12 +413,32 @@ export function parseInstruction(line: string, address: Address = 0, labels?: Ma
     address,
   };
 
+  // Instruksi percabangan: operand pertamanya adalah target lompatan.
+  const isBranch = BRANCH_MNEMONICS.includes(mnemonic);
+
   if (operands.length >= 1) {
-    instruction.operand1 = parseOperand(operands[0], labels);
+    instruction.operand1 = parseOperand(operands[0], labels, isBranch);
   }
 
   if (operands.length >= 2) {
     instruction.operand2 = parseOperand(operands[1], labels);
+  }
+
+  // JR dan DJNZ dikodekan sebagai perpindahan relatif satu byte bertanda,
+  // sehingga hanya menjangkau -128..+127 dari instruksi berikutnya. Assembler
+  // sungguhan menolak target di luar jangkauan itu, dan justru batas inilah
+  // yang membedakan JR dari JP — jadi simulator ikut menegakkannya.
+  if (RELATIVE_BRANCH_MNEMONICS.includes(mnemonic) && instruction.operand1) {
+    const target = instruction.operand1;
+    if (target.type === 'immediate8' || target.type === 'immediate16' || target.type === 'address') {
+      const displacement = target.value - (address + 1);
+      if (displacement < -128 || displacement > 127) {
+        throw new Error(
+          `Target ${mnemonic} terlalu jauh (perpindahan ${displacement}). ` +
+          `${mnemonic} hanya menjangkau -128 sampai +127 dari instruksi berikutnya — gunakan JP untuk lompatan sejauh ini.`
+        );
+      }
+    }
   }
 
   // Validate 8-bit instruction operand ranges
@@ -434,8 +485,24 @@ export function parseProgram(code: string): Instruction[] {
  */
 export function parseProgramWithOrg(code: string): ParseResult {
   const lines = code.split('\n');
+
+  // Pra-pindai ORG lebih dulu. Label harus diselesaikan relatif terhadap
+  // alamat awal program, jadi nilainya sudah harus diketahui sebelum
+  // pengumpulan label dimulai.
+  let orgAddress = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const orgMatch = lines[i].split(';')[0].trim().match(/^ORG\s+(.+)$/i);
+    if (!orgMatch) continue;
+
+    orgAddress = parseHexValue(orgMatch[1].trim());
+    if (isNaN(orgAddress) || orgAddress < 0 || orgAddress > 0xFFFF) {
+      throw new Error(`Parse error on line ${i + 1}: Invalid ORG address: ${orgMatch[1]}`);
+    }
+    break;
+  }
+
   const labels = new Map<string, number>();
-  
+
   // First pass: collect labels and count instructions
   let instrIndex = 0;
   for (let i = 0; i < lines.length; i++) {
@@ -450,7 +517,7 @@ export function parseProgramWithOrg(code: string): ParseResult {
     // Check for label (ends with ':')
     const labelMatch = withoutComments.match(/^([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$/);
     if (labelMatch) {
-      labels.set(labelMatch[1].toUpperCase(), instrIndex);
+      labels.set(labelMatch[1].toUpperCase(), orgAddress + instrIndex);
       // If there's an instruction after the label on the same line, count it
       const rest = labelMatch[2].trim();
       if (rest && !rest.startsWith(';')) {
@@ -464,7 +531,6 @@ export function parseProgramWithOrg(code: string): ParseResult {
 
   // Second pass: parse instructions with label resolution
   const instructions: Instruction[] = [];
-  let orgAddress = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -476,12 +542,8 @@ export function parseProgramWithOrg(code: string): ParseResult {
 
     // Handle ORG directive
     const withoutComments = line.split(';')[0].trim();
-    const orgMatch = withoutComments.match(/^ORG\s+(.+)$/i);
-    if (orgMatch) {
-      orgAddress = parseHexValue(orgMatch[1].trim());
-      if (isNaN(orgAddress) || orgAddress < 0 || orgAddress > 0xFFFF) {
-        throw new Error(`Parse error on line ${i + 1}: Invalid ORG address: ${orgMatch[1]}`);
-      }
+    // Sudah diproses pada pra-pindai di atas.
+    if (withoutComments.match(/^ORG\s+/i)) {
       continue;
     }
 
@@ -494,7 +556,7 @@ export function parseProgramWithOrg(code: string): ParseResult {
     }
 
     try {
-      const instruction = parseInstruction(codePart, instructions.length, labels);
+      const instruction = parseInstruction(codePart, orgAddress + instructions.length, labels);
       // Keep original source line for display
       instruction.sourceCode = line;
       instructions.push(instruction);

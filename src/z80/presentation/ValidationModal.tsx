@@ -11,7 +11,8 @@ import { INSTRUMENTS, InstrumentDefinition, VALIDATOR_PROFILES, ValidatorPresetP
 import { SignaturePad } from './SignaturePad';
 import { PrintableValidationSheet, ValidationFormState } from './PrintableValidationSheet';
 import { db } from '../../firebase';
-import { collection, addDoc, setDoc, doc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { ensureUid } from '../adapters/useAuthStore';
 
 export type WindowMode = 'split' | 'minimized' | 'modal';
 
@@ -107,6 +108,7 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
   const [presetProfile, setPresetProfile] = useState<ValidatorPresetProfile | null>(presetProfileProp || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -253,29 +255,26 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
     };
 
     try {
-      // Check if document from this validator already exists for this instrument type
-      const q = query(
-        collection(db, 'validation_responses'),
-        where('validatorName', '==', formState.validatorName.trim()),
-        where('instrumentType', '==', activeType)
-      );
-      const querySnap = await getDocs(q);
+      // Identitas sesi (anonim maupun Google). Pengisi tidak perlu login.
+      const uid = await ensureUid();
 
-      if (!querySnap.empty) {
-        // Update existing record
-        const existingDocId = querySnap.docs[0].id;
-        await setDoc(doc(db, 'validation_responses', existingDocId), payload, { merge: true });
-      } else {
-        // Create new record
-        await addDoc(collection(db, 'validation_responses'), payload);
-      }
+      // Id dokumen deterministik: satu dokumen per (pengisi, jenis instrumen).
+      // Mengganti pencarian lama berbasis query nama, sehingga pengisi tidak
+      // lagi membutuhkan izin baca ke koleksi berisi data pribadi validator.
+      await setDoc(
+        doc(db, 'validation_responses', `${uid}_${activeType}`),
+        { ...payload, uid },
+        { merge: true }
+      );
 
       localStorage.setItem(`z80sim_val_${activeType}_${safeKeyName}`, JSON.stringify(formState));
       setSubmitSuccess(true);
     } catch (err) {
-      console.error('Firestore submit fallback to localStorage:', err);
+      // Jangan pernah menampilkan "terkirim" saat penyimpanan gagal — jawaban
+      // validator akan hilang tanpa seorang pun menyadarinya.
+      console.error('Gagal menyimpan hasil validasi ke Firestore:', err);
       localStorage.setItem(`z80sim_val_${activeType}_${safeKeyName}`, JSON.stringify(formState));
-      setSubmitSuccess(true);
+      setSubmitError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -429,9 +428,7 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
                   <button
                     onClick={() => setWindowMode('minimized')}
                     className={`p-1.5 sm:px-2 sm:py-1 rounded-lg transition-all flex items-center gap-1 text-xs ${
-                      windowMode === 'minimized'
-                        ? 'bg-blue-600 text-white shadow-sm font-semibold'
-                        : isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-gray-600 hover:text-gray-900'
+                      isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-gray-600 hover:text-gray-900'
                     }`}
                     title="Minimize ke widget pojok bawah"
                   >
@@ -872,6 +869,45 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
                 className={`px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold ${isDark ? 'border-zinc-700 hover:bg-zinc-800' : 'border-gray-300 hover:bg-gray-100'}`}
               >
                 Selesai
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Submission Failure Modal */}
+      {submitError && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+          <div className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl text-center space-y-4 ${isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-100' : 'bg-white border-gray-200 text-gray-900'}`}>
+            <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center mx-auto border border-amber-500/30">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl font-bold">Hasil Validasi Belum Tersimpan</h3>
+            <p className={`text-xs sm:text-sm ${textMuted} leading-relaxed`}>
+              Mohon maaf, jawaban Bapak/Ibu <strong>belum berhasil dikirim ke server</strong>. Jawaban sudah kami simpan sementara di peramban ini, jadi tidak hilang. Mohon berkenan mencoba kirim ulang, atau menyimpannya sebagai PDF sebagai cadangan.
+            </p>
+            <p className={`text-[11px] font-mono px-3 py-2 rounded-lg break-words ${isDark ? 'bg-zinc-800 text-zinc-400' : 'bg-gray-100 text-gray-500'}`}>
+              {submitError}
+            </p>
+            <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+              <button
+                onClick={() => {
+                  setSubmitError(null);
+                  executeSubmission();
+                }}
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm shadow-md"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Coba Kirim Ulang</span>
+              </button>
+              <button
+                onClick={() => {
+                  setSubmitError(null);
+                  handlePrint();
+                }}
+                className={`px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold ${isDark ? 'border-zinc-700 hover:bg-zinc-800' : 'border-gray-300 hover:bg-gray-100'}`}
+              >
+                Simpan PDF
               </button>
             </div>
           </div>

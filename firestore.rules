@@ -1,11 +1,60 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────────────────────
+    // Admin = pemilik penelitian. Hanya email di daftar ini yang
+    // boleh membuka dashboard hasil validasi, mengubah, dan menghapus.
+    // Tambahkan email dosen pembimbing di sini bila perlu akses.
+    // ─────────────────────────────────────────────────────────────
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+             'ucupbaba0704@gmail.com'
+           ];
+    }
+
+    // Bentuk payload jawaban validasi yang diterima.
+    // Membatasi ukuran tanda tangan agar dokumen tidak menembus
+    // batas 1 MB milik Firestore.
+    function isValidResponse(d) {
+      return d.instrumentType in ['materi', 'media', 'mahasiswa', 'dosen']
+        && d.validatorName is string
+        && d.validatorName.size() > 0
+        && d.validatorName.size() <= 200
+        && d.validatorNip is string
+        && d.validatorNip.size() <= 100
+        && (
+             d.signatureDataUrl == null
+             || (d.signatureDataUrl is string && d.signatureDataUrl.size() <= 400000)
+           );
+    }
+
+    // Preferensi dan file tersimpan milik pengguna yang login Google.
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    match /validation_responses/{document=**} {
-      allow read, write: if true;
+
+    // ─────────────────────────────────────────────────────────────
+    // Jawaban instrumen validasi.
+    // Berisi data pribadi: nama, NIP/NIDN, instansi, dan tanda tangan.
+    // Publik TIDAK boleh membaca apa pun di koleksi ini.
+    // ─────────────────────────────────────────────────────────────
+    match /validation_responses/{docId} {
+
+      // Dashboard peneliti: baca, ubah, hapus.
+      allow read, write: if isAdmin();
+
+      // Pengisi (anonim maupun login Google) hanya boleh menulis
+      // dokumennya sendiri. Id dokumen dikunci ke uid + jenis instrumen,
+      // sehingga satu orang tidak dapat menimpa jawaban orang lain.
+      // Tidak ada izin baca dan tidak ada izin hapus untuk pengisi.
+      allow create, update: if request.auth != null
+        && docId == request.auth.uid + '_' + request.resource.data.instrumentType
+        && request.resource.data.uid == request.auth.uid
+        && isValidResponse(request.resource.data);
     }
   }
 }

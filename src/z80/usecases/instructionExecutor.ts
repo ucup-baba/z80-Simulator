@@ -99,6 +99,8 @@ function writeIndexed(s: CPUState, inst: Instruction, v: Byte) {
 }
 
 const ok = (s: CPUState, m: string): ExecutionResult => ({ success: true, updatedState: s, message: m });
+/** Seperti ok(), untuk instruksi yang menetapkan PC sendiri. Lihat ExecutionResult.jumped. */
+const okJump = (s: CPUState, m: string): ExecutionResult => ({ success: true, updatedState: s, message: m, jumped: true });
 const fail = (s: CPUState, e: string): ExecutionResult => ({ success: false, updatedState: s, error: e });
 // ─── Instruction implementations ────────────────────────────────────
 
@@ -707,12 +709,12 @@ function executeJp(s: CPUState, inst: Instruction, cond?: ConditionCode): Execut
   // JP (HL)
   if (!cond && inst.operand1?.type === 'indirect' && inst.operand1.value === 'HL') {
     const addr = getPair(s, 'HL'); s.registers.registers16.PC = addr;
-    return ok(s, `JP (HL) → ${hex16(addr)}`);
+    return okJump(s, `JP (HL) → ${hex16(addr)}`);
   }
   // JP (IX) / JP (IY)
   if (!cond && inst.operand1?.type === 'indexRegister') {
     const addr = getIR(s, inst.operand1.value); s.registers.registers16.PC = addr;
-    return ok(s, `JP (${inst.operand1.value}) → ${hex16(addr)}`);
+    return okJump(s, `JP (${inst.operand1.value}) → ${hex16(addr)}`);
   }
   const target = resolveJumpTarget(inst);
   if (target === null) return fail(s, 'JP: invalid target');
@@ -720,7 +722,7 @@ function executeJp(s: CPUState, inst: Instruction, cond?: ConditionCode): Execut
     return ok(s, `JP ${cond}, ${hex16(target)}: not taken`);
   }
   s.registers.registers16.PC = target;
-  return ok(s, `JP ${cond ? cond + ', ' : ''}${hex16(target)}`);
+  return okJump(s, `JP ${cond ? cond + ', ' : ''}${hex16(target)}`);
 }
 
 function executeJr(s: CPUState, inst: Instruction, cond?: ConditionCode): ExecutionResult {
@@ -730,14 +732,14 @@ function executeJr(s: CPUState, inst: Instruction, cond?: ConditionCode): Execut
     return ok(s, `JR ${cond}, ${target}: not taken`);
   }
   s.registers.registers16.PC = target;
-  return ok(s, `JR ${cond ? cond + ', ' : ''}${target}`);
+  return okJump(s, `JR ${cond ? cond + ', ' : ''}${target}`);
 }
 
 function executeDjnz(s: CPUState, inst: Instruction): ExecutionResult {
   const target = resolveJumpTarget(inst);
   if (target === null) return fail(s, 'DJNZ: invalid target');
   const b = toByte(getR8(s, 'B') - 1); setR8(s, 'B', b);
-  if (b !== 0) { s.registers.registers16.PC = target; return ok(s, `DJNZ ${target}: B=${hex8(b)}, taken`); }
+  if (b !== 0) { s.registers.registers16.PC = target; return okJump(s, `DJNZ ${target}: B=${hex8(b)}, taken`); }
   return ok(s, `DJNZ ${target}: B=0, not taken`);
 }
 
@@ -749,7 +751,7 @@ function executeCall(s: CPUState, inst: Instruction, cond?: ConditionCode): Exec
   }
   stackPush16(s, toWord(s.registers.registers16.PC + 1));
   s.registers.registers16.PC = target;
-  return ok(s, `CALL ${cond ? cond + ', ' : ''}${hex16(target)}`);
+  return okJump(s, `CALL ${cond ? cond + ', ' : ''}${hex16(target)}`);
 }
 
 function executeRet(s: CPUState, cond?: ConditionCode): ExecutionResult {
@@ -757,7 +759,7 @@ function executeRet(s: CPUState, cond?: ConditionCode): ExecutionResult {
     return ok(s, `RET ${cond}: not taken`);
   }
   const addr = stackPop16(s); s.registers.registers16.PC = addr;
-  return ok(s, `RET${cond ? ' ' + cond : ''} → ${hex16(addr)}`);
+  return okJump(s, `RET${cond ? ' ' + cond : ''} → ${hex16(addr)}`);
 }
 
 function executeRst(s: CPUState, inst: Instruction): ExecutionResult {
@@ -765,7 +767,7 @@ function executeRst(s: CPUState, inst: Instruction): ExecutionResult {
   const target = inst.operand1.type === 'immediate8' ? inst.operand1.value : 0;
   stackPush16(s, toWord(s.registers.registers16.PC + 1));
   s.registers.registers16.PC = target;
-  return ok(s, `RST ${hex8(target)}`);
+  return okJump(s, `RST ${hex8(target)}`);
 }
 
 function executePush(s: CPUState, inst: Instruction): ExecutionResult {
@@ -802,12 +804,12 @@ function executeIm(s: CPUState, inst: Instruction): ExecutionResult {
 }
 function executeReti(s: CPUState): ExecutionResult {
   const addr = stackPop16(s); s.registers.registers16.PC = addr;
-  return ok(s, `RETI → ${hex16(addr)}`);
+  return okJump(s, `RETI → ${hex16(addr)}`);
 }
 function executeRetn(s: CPUState): ExecutionResult {
   const addr = stackPop16(s); s.registers.registers16.PC = addr;
   s.registers.interrupt.IFF1 = s.registers.interrupt.IFF2;
-  return ok(s, `RETN → ${hex16(addr)}`);
+  return okJump(s, `RETN → ${hex16(addr)}`);
 }
 // ═══════════════════════════════════════════════════════════════════════
 // ─── Main dispatcher ────────────────────────────────────────────────

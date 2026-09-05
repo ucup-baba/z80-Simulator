@@ -136,4 +136,11 @@ export interface ExecutionResult {
   updatedState: CPUState;
   message?: string;
   error?: string;
+  /**
+   * True bila instruksi ini sendiri yang menetapkan PC (JP/JR/DJNZ/CALL/RET/RST).
+   * Executor memakai penanda ini alih-alih membandingkan nilai PC sebelum dan
+   * sesudah — perbandingan itu gagal pada lompatan ke diri sendiri, misalnya
+   * "LOOP: DJNZ LOOP", karena nilai PC-nya kebetulan tidak berubah.
+   */
+  jumped?: boolean;
 }

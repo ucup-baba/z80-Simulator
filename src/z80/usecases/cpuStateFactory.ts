@@ -99,11 +99,17 @@ export function createCPUState(): CPUState {
 
 /**
  * Resets CPU state to initial values
+ *
+ * `startAddress` adalah alamat ORG program yang sedang dimuat, supaya setelah
+ * Reset eksekusi dimulai kembali dari awal program, bukan dari 0000H.
  */
-export function resetCPUState(state: CPUState): CPUState {
+export function resetCPUState(state: CPUState, startAddress: number = 0): CPUState {
+  const registers = createRegisterState();
+  registers.registers16.PC = toWord(startAddress);
+
   return {
     ...state,
-    registers: createRegisterState(),
+    registers,
     memory: createMemory(state.memory.size),
     ioPorts: new Uint8Array(256),
     halted: false,
