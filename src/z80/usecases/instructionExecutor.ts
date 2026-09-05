@@ -113,6 +113,25 @@ function executeLd(s: CPUState, inst: Instruction): ExecutionResult {
     const v = o2.type === 'register8' ? getR8(s, o2.value) : o2.value;
     setR8(s, o1.value, v); return ok(s, `LD ${o1.value}, ${hex8(v)}`);
   }
+  // LD A, I / LD A, R — hanya A yang boleh menjadi tujuan.
+  // Flag P/V menyalin IFF2, dan inilah satu-satunya cara program membaca
+  // status flip-flop interupsi kedua.
+  if (o1.type === 'register8' && o1.value === 'A' && o2.type === 'specialRegister') {
+    const v = o2.value === 'I' ? s.registers.special.I : s.registers.special.R;
+    setR8(s, 'A', v);
+    s.registers.flags.S = (v & 0x80) !== 0;
+    s.registers.flags.Z = v === 0;
+    s.registers.flags.H = false;
+    s.registers.flags.N = false;
+    s.registers.flags.P = s.registers.interrupt.IFF2;
+    return ok(s, `LD A, ${o2.value} = ${hex8(v)}`);
+  }
+  // LD I, A / LD R, A — tidak menyentuh flag sama sekali.
+  if (o1.type === 'specialRegister' && o2.type === 'register8' && o2.value === 'A') {
+    const v = getR8(s, 'A');
+    if (o1.value === 'I') { s.registers.special.I = v; } else { s.registers.special.R = v; }
+    return ok(s, `LD ${o1.value}, A = ${hex8(v)}`);
+  }
   // LD rr, nn
   if (o1.type === 'registerPair' && (o2.type === 'immediate16' || o2.type === 'immediate8')) {
     setPair(s, o1.value, o2.value); return ok(s, `LD ${o1.value}, ${hex16(o2.value)}`);

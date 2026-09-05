@@ -3,7 +3,7 @@
  * Parses assembly code into Instruction objects — full Z-80 instruction set
  */
 
-import type { Instruction, Mnemonic, OperandType, Register8Bit, Register16Bit, RegisterPair, IndexRegister, Address } from '../domain';
+import type { Instruction, Mnemonic, OperandType, Register8Bit, Register16Bit, RegisterPair, IndexRegister, SpecialRegister, Address } from '../domain';
 
 /**
  * Parses a hex string (e.g., "05H", "0x05", "5") to a number
@@ -189,6 +189,13 @@ function parseOperand(operand: string, labels?: Map<string, number>, preferLabel
   // Check for 8-bit register
   if (is8BitRegister(trimmed)) {
     return { type: 'register8', value: trimmed as Register8Bit };
+  }
+
+  // Check for special register (I = interrupt vector, R = memory refresh).
+  // Diperiksa setelah register biasa, dan setelah pencarian label pada posisi
+  // target lompatan, sehingga label bernama I atau R tetap dapat dilompati.
+  if (trimmed === 'I' || trimmed === 'R') {
+    return { type: 'specialRegister', value: trimmed as SpecialRegister };
   }
 
   // Check for register pair (BC, DE, HL, AF)

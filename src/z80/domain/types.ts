@@ -19,6 +19,11 @@ export type Register16Bit = 'PC' | 'SP';
 export type IndexRegister = 'IX' | 'IY';
 
 /**
+ * Special register names (Interrupt Vector dan Memory Refresh)
+ */
+export type SpecialRegister = 'I' | 'R';
+
+/**
  * 16-bit register pair names (composed of two 8-bit registers)
  */
 export type RegisterPair = 'BC' | 'DE' | 'HL' | 'AF';
@@ -51,6 +56,7 @@ export type OperandType =
   | { type: 'register16'; value: Register16Bit }
   | { type: 'registerPair'; value: RegisterPair }
   | { type: 'indexRegister'; value: IndexRegister }         // IX, IY
+  | { type: 'specialRegister'; value: SpecialRegister }      // I, R
   | { type: 'indirect'; value: RegisterPair }               // (HL), (BC), (DE)
   | { type: 'indirectAddress'; value: Address }              // (nn) — direct memory addressing
   | { type: 'indexedIX'; value: number }                     // (IX+d)

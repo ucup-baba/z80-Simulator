@@ -51,6 +51,9 @@ function getM1Cycles(inst: Instruction): number {
   if (mnemonic === 'IN' && o2?.type === 'portRegister') return 2;
   if (mnemonic === 'OUT' && o1?.type === 'portRegister') return 2;
 
+  // ED prefix: LD A,I / LD A,R / LD I,A / LD R,A
+  if (o1?.type === 'specialRegister' || o2?.type === 'specialRegister') return 2;
+
   // Default: 1 M1 cycle (unprefixed instructions)
   return 1;
 }
@@ -70,6 +73,8 @@ function getInstructionCycles(inst: Instruction): number {
   switch (inst.mnemonic) {
     // ── LD variants ──
     case 'LD': {
+      // LD A,I / LD A,R / LD I,A / LD R,A = 9 (berprefiks ED)
+      if (o1?.type === 'specialRegister' || o2?.type === 'specialRegister') return 9;
       // LD r, r' = 4
       if (o1?.type === 'register8' && o2?.type === 'register8') return 4;
       // LD r, n = 7

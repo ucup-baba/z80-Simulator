@@ -969,6 +969,68 @@ test('R hanya memutar tujuh bit bawah', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
+section('Register khusus I dan R');
+
+test('LD I, A lalu LD A, I mengembalikan nilai yang sama', () => {
+  const { cpu } = runProgram('LD A, 3CH\nLD I, A\nLD A, 00H\nLD A, I\nHALT');
+  assertEqual(cpu.registers.special.I, 0x3C, 'register I');
+  assertEqual(cpu.registers.registers8.A, 0x3C, 'A');
+});
+
+test('LD A, I menyalakan Zero ketika I kosong', () => {
+  const { cpu } = runProgram('LD A, 0FFH\nLD A, I\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x00, 'A');
+  assertEqual(cpu.registers.flags.Z, true, 'Z');
+  assertEqual(cpu.registers.flags.H, false, 'H selalu reset');
+  assertEqual(cpu.registers.flags.N, false, 'N selalu reset');
+});
+
+test('LD A, I menyalakan Sign ketika bit 7 menyala', () => {
+  const { cpu } = runProgram('LD A, 80H\nLD I, A\nLD A, I\nHALT');
+  assertEqual(cpu.registers.flags.S, true, 'S');
+  assertEqual(cpu.registers.flags.Z, false, 'Z');
+});
+
+test('LD A, I menyalin IFF2 ke flag P/V', () => {
+  // Inilah satu-satunya cara program membaca status flip-flop interupsi kedua.
+  const aktif = runProgram('EI\nLD A, I\nHALT');
+  assertEqual(aktif.cpu.registers.flags.P, true, 'P/V mengikuti IFF2 yang menyala');
+
+  const mati = runProgram('DI\nLD A, I\nHALT');
+  assertEqual(mati.cpu.registers.flags.P, false, 'P/V mengikuti IFF2 yang mati');
+});
+
+test('LD I, A tidak menyentuh flag', () => {
+  const { cpu } = runProgram('SCF\nLD A, 00H\nLD I, A\nHALT');
+  assertEqual(cpu.registers.flags.C, true, 'C dipertahankan');
+  assertEqual(cpu.registers.flags.Z, false, 'Z tidak ikut menyala');
+});
+
+test('LD R, A menulis pencacah refresh', () => {
+  // R terus berdetak mengikuti siklus M1, jadi nilainya bertambah lagi setelah
+  // ditulis: dua untuk LD R,A yang berprefiks ED, dan seterusnya.
+  const { cpu } = runProgram('LD A, 40H\nLD R, A\nHALT');
+  assertEqual(cpu.registers.special.R, 0x43, 'R = 40H ditulis, lalu berdetak untuk LD R,A dan HALT');
+});
+
+test('LD A, R membaca pencacah refresh', () => {
+  const { cpu } = runProgram('LD A, 40H\nLD R, A\nLD A, R\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x42, 'A membaca R setelah detak LD R,A');
+});
+
+test('Hanya A yang boleh menjadi tujuan register khusus', () => {
+  const { cpu } = runProgram('LD B, I\nHALT');
+  if (!cpu.error) throw new Error('Diharapkan error untuk LD B, I');
+});
+
+test('Label bernama I atau R tetap bisa dilompati', () => {
+  // Nama register khusus tidak boleh menutupi label pada posisi target lompatan.
+  const { cpu } = runProgram('LD B, 03H\nR: DJNZ R\nHALT');
+  assertEqual(cpu.error, null, 'tanpa error');
+  assertEqual(cpu.registers.registers8.B, 0x00, 'B');
+});
+
+// ─────────────────────────────────────────────────────────────
 console.log(`\n${passed} lolos, ${failed} gagal`);
 
 if (failed > 0) {
