@@ -62,6 +62,7 @@ function runProgram(
   code: string,
   maxSteps = 5000,
   memorySeed: Record<number, number> = {},
+  portSeed: Record<number, number> = {},
 ): { cpu: CPUState; steps: number } {
   const program = loadProgram(code);
   let cpu = createCPUState();
@@ -69,6 +70,9 @@ function runProgram(
 
   for (const [address, value] of Object.entries(memorySeed)) {
     cpu.memory.bytes[Number(address)] = value;
+  }
+  for (const [port, value] of Object.entries(portSeed)) {
+    cpu.ioPorts[Number(port)] = value;
   }
 
   let steps = 0;
@@ -783,6 +787,185 @@ test('JP (IY) juga melompat', () => {
   const { cpu } = runProgram('LD IY, 0003H\nJP (IY)\nHALT\nLD A, 55H\nHALT');
   assertEqual(cpu.error, null, 'tanpa error');
   assertEqual(cpu.registers.registers8.A, 0x55, 'instruksi tujuan dieksekusi');
+});
+
+// ─────────────────────────────────────────────────────────────
+section('I/O — port langsung dan lewat register C');
+
+test('OUT (n), A menulis ke port', () => {
+  const { cpu } = runProgram('LD A, 5AH\nOUT (05H), A\nHALT');
+  assertEqual(cpu.ioPorts[0x05], 0x5A, 'port 05H');
+});
+
+test('IN A, (n) membaca dari port', () => {
+  const { cpu } = runProgram('IN A, (05H)\nHALT', 100, {}, { 0x05: 0xC3 });
+  assertEqual(cpu.registers.registers8.A, 0xC3, 'A');
+});
+
+test('OUT lalu IN pada port yang sama mengembalikan nilainya', () => {
+  const { cpu } = runProgram('LD A, 77H\nOUT (10H), A\nLD A, 00H\nIN A, (10H)\nHALT');
+  assertEqual(cpu.registers.registers8.A, 0x77, 'A');
+});
+
+test('OUT (C), r memakai register C sebagai nomor port', () => {
+  const { cpu } = runProgram('LD C, 20H\nLD B, 99H\nOUT (C), B\nHALT');
+  assertEqual(cpu.ioPorts[0x20], 0x99, 'port 20H');
+});
+
+test('IN r, (C) membaca port yang ditunjuk register C', () => {
+  const { cpu } = runProgram('LD C, 20H\nIN B, (C)\nHALT', 100, {}, { 0x20: 0x3C });
+  assertEqual(cpu.registers.registers8.B, 0x3C, 'B');
+});
+
+test('Nomor port dipotong menjadi 8 bit', () => {
+  const { cpu } = runProgram('LD A, 42H\nOUT (0105H), A\nHALT');
+  assertEqual(cpu.ioPorts[0x05], 0x42, 'port 0105H jatuh ke port 05H');
+});
+
+// ─────────────────────────────────────────────────────────────
+section('I/O — instruksi blok');
+
+test('OUTI mengirim satu byte dari memori lalu memajukan HL', () => {
+  const { cpu } = runProgram(
+    'LD B, 02H\nLD C, 30H\nLD HL, 1000H\nOUTI\nHALT',
+    100,
+    { 0x1000: 0xE1 },
+  );
+  assertEqual(cpu.ioPorts[0x30], 0xE1, 'port menerima byte');
+  assertEqual(cpu.registers.registers8.L, 0x01, 'HL maju');
+  assertEqual(cpu.registers.registers8.B, 0x01, 'B berkurang');
+  assertEqual(cpu.registers.flags.N, true, 'N');
+});
+
+test('OUTI menyalakan Zero ketika B menjadi nol', () => {
+  const { cpu } = runProgram('LD B, 01H\nLD C, 30H\nLD HL, 1000H\nOUTI\nHALT');
+  assertEqual(cpu.registers.registers8.B, 0x00, 'B');
+  assertEqual(cpu.registers.flags.Z, true, 'Z');
+});
+
+test('OUTD memundurkan HL', () => {
+  const { cpu } = runProgram('LD B, 02H\nLD C, 30H\nLD HL, 1000H\nOUTD\nHALT');
+  assertEqual(cpu.registers.registers8.H, 0x0F, 'H');
+  assertEqual(cpu.registers.registers8.L, 0xFF, 'HL mundur ke 0FFFH');
+});
+
+test('INI menyimpan byte dari port ke memori', () => {
+  const { cpu } = runProgram(
+    'LD B, 02H\nLD C, 40H\nLD HL, 1000H\nINI\nHALT',
+    100,
+    {},
+    { 0x40: 0x8D },
+  );
+  assertEqual(cpu.memory.bytes[0x1000], 0x8D, 'memori menerima byte');
+  assertEqual(cpu.registers.registers8.L, 0x01, 'HL maju');
+  assertEqual(cpu.registers.registers8.B, 0x01, 'B berkurang');
+});
+
+test('IND memundurkan HL', () => {
+  const { cpu } = runProgram('LD B, 02H\nLD C, 40H\nLD HL, 1000H\nIND\nHALT');
+  assertEqual(cpu.registers.registers8.L, 0xFF, 'HL mundur');
+});
+
+test('OTIR mengirim seluruh blok ke port', () => {
+  const { cpu } = runProgram(
+    'LD B, 03H\nLD C, 50H\nLD HL, 1000H\nOTIR\nHALT',
+    100,
+    { 0x1000: 0x11, 0x1001: 0x22, 0x1002: 0x33 },
+  );
+  assertEqual(cpu.ioPorts[0x50], 0x33, 'port menyimpan byte terakhir');
+  assertEqual(cpu.registers.registers8.B, 0x00, 'B habis');
+  assertEqual(cpu.registers.registers8.L, 0x03, 'HL berhenti setelah blok');
+});
+
+test('INIR mengisi memori dari port', () => {
+  const { cpu } = runProgram(
+    'LD B, 03H\nLD C, 60H\nLD HL, 1000H\nINIR\nHALT',
+    100,
+    {},
+    { 0x60: 0x7E },
+  );
+  assertEqual(cpu.memory.bytes[0x1000], 0x7E, 'byte 1');
+  assertEqual(cpu.memory.bytes[0x1002], 0x7E, 'byte 3');
+  assertEqual(cpu.registers.registers8.B, 0x00, 'B habis');
+});
+
+test('OTIR dengan B=00H berputar 256 kali dan menghitung siklusnya', () => {
+  // Regresi: perhitungan siklus dulu memakai nilai B awal, sehingga B=0
+  // menghasilkan sumbangan siklus negatif alih-alih 255*21+16.
+  const { cpu } = runProgram('LD B, 00H\nLD C, 70H\nLD HL, 1000H\nOTIR\nHALT');
+  assertEqual(cpu.registers.registers8.B, 0x00, 'B kembali nol setelah 256 putaran');
+  if (cpu.performance.clockCycles < 5000) {
+    throw new Error(`Siklus terlalu sedikit untuk 256 putaran: ${cpu.performance.clockCycles}`);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+section('Kendali interupsi');
+
+test('EI menyalakan kedua flip-flop interupsi', () => {
+  const { cpu } = runProgram('EI\nHALT');
+  assertEqual(cpu.registers.interrupt.IFF1, true, 'IFF1');
+  assertEqual(cpu.registers.interrupt.IFF2, true, 'IFF2');
+});
+
+test('DI mematikan kedua flip-flop interupsi', () => {
+  const { cpu } = runProgram('EI\nDI\nHALT');
+  assertEqual(cpu.registers.interrupt.IFF1, false, 'IFF1');
+  assertEqual(cpu.registers.interrupt.IFF2, false, 'IFF2');
+});
+
+test('Interupsi mati saat CPU baru dinyalakan', () => {
+  const cpu = createCPUState();
+  assertEqual(cpu.registers.interrupt.IFF1, false, 'IFF1');
+  assertEqual(cpu.registers.interrupt.IM, 0, 'mode interupsi');
+});
+
+test('IM menetapkan mode interupsi', () => {
+  assertEqual(runProgram('IM 1\nHALT').cpu.registers.interrupt.IM, 1, 'IM 1');
+  assertEqual(runProgram('IM 2\nHALT').cpu.registers.interrupt.IM, 2, 'IM 2');
+  assertEqual(runProgram('IM 0\nHALT').cpu.registers.interrupt.IM, 0, 'IM 0');
+});
+
+test('Mode interupsi selain 0, 1, 2 ditolak', () => {
+  const { cpu } = runProgram('IM 3\nHALT');
+  if (!cpu.error) throw new Error('Diharapkan error untuk IM 3');
+  if (!cpu.error.includes('IM')) throw new Error(`Pesan error tidak sesuai: ${cpu.error}`);
+});
+
+test('RETI kembali seperti RET biasa', () => {
+  const { cpu } = runProgram('LD A, 01H\nCALL ISR\nHALT\nISR: INC A\nRETI');
+  assertEqual(cpu.registers.registers8.A, 0x02, 'A');
+  assertEqual(cpu.halted, true, 'kembali lalu berhenti');
+});
+
+test('RETN kembali dan memulihkan IFF1 dari IFF2', () => {
+  const { cpu } = runProgram('EI\nCALL NMI\nHALT\nNMI: RETN');
+  assertEqual(cpu.halted, true, 'kembali lalu berhenti');
+  assertEqual(cpu.registers.interrupt.IFF1, cpu.registers.interrupt.IFF2, 'IFF1 mengikuti IFF2');
+  assertEqual(cpu.registers.interrupt.IFF1, true, 'IFF1');
+});
+
+// ─────────────────────────────────────────────────────────────
+section('Register refresh (R)');
+
+test('R bertambah seiring instruksi yang dieksekusi', () => {
+  const { cpu, steps } = runProgram('NOP\nNOP\nNOP\nHALT');
+  assertEqual(cpu.registers.special.R, steps, 'R sama dengan jumlah instruksi tak berprefiks');
+});
+
+test('Instruksi berprefiks menambah R dua kali', () => {
+  // SLA memakai prefiks CB, jadi menyumbang dua siklus M1.
+  const { cpu } = runProgram('SLA B\nHALT');
+  assertEqual(cpu.registers.special.R, 3, 'dua untuk SLA berprefiks, satu untuk HALT');
+});
+
+test('R hanya memutar tujuh bit bawah', () => {
+  // 130 NOP melewati batas 7-bit, jadi R harus membungkus, bukan mencapai 130.
+  const program = Array(130).fill('NOP').join('\n');
+  const { cpu } = runProgram(`${program}\nHALT`);
+  if (cpu.registers.special.R > 0x7F) {
+    throw new Error(`R harus tetap di bawah 80H, dapat ${cpu.registers.special.R}`);
+  }
 });
 
 // ─────────────────────────────────────────────────────────────

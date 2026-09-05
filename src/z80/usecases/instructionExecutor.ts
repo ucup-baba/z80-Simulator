@@ -655,10 +655,12 @@ function executeIni(s: CPUState): ExecutionResult {
   return ok(s, `INI`);
 }
 function executeInir(s: CPUState): ExecutionResult {
-  const startB = getR8(s, 'B');
-  do { executeIni(s); } while (getR8(s, 'B') !== 0);
-  s.performance.clockCycles += (startB - 1) * 21 + 16;
-  const rInir = s.registers.special.R; s.registers.special.R = (rInir & 0x80) | ((rInir + 2 * (startB - 1)) & 0x7F);
+  // B=0 berarti 256 iterasi pada Z-80. Jumlah putaran harus dihitung
+  // sungguhan: memakai nilai B awal membuat hitungan siklusnya negatif.
+  let iterations = 0;
+  do { executeIni(s); iterations++; } while (getR8(s, 'B') !== 0);
+  s.performance.clockCycles += (iterations - 1) * 21 + 16;
+  const rInir = s.registers.special.R; s.registers.special.R = (rInir & 0x80) | ((rInir + 2 * (iterations - 1)) & 0x7F);
   return ok(s, `INIR: complete`);
 }
 function executeInd(s: CPUState): ExecutionResult {
@@ -668,10 +670,12 @@ function executeInd(s: CPUState): ExecutionResult {
   return ok(s, `IND`);
 }
 function executeIndr(s: CPUState): ExecutionResult {
-  const startB = getR8(s, 'B');
-  do { executeInd(s); } while (getR8(s, 'B') !== 0);
-  s.performance.clockCycles += (startB - 1) * 21 + 16;
-  const rIndr = s.registers.special.R; s.registers.special.R = (rIndr & 0x80) | ((rIndr + 2 * (startB - 1)) & 0x7F);
+  // B=0 berarti 256 iterasi pada Z-80. Jumlah putaran harus dihitung
+  // sungguhan: memakai nilai B awal membuat hitungan siklusnya negatif.
+  let iterations = 0;
+  do { executeInd(s); iterations++; } while (getR8(s, 'B') !== 0);
+  s.performance.clockCycles += (iterations - 1) * 21 + 16;
+  const rIndr = s.registers.special.R; s.registers.special.R = (rIndr & 0x80) | ((rIndr + 2 * (iterations - 1)) & 0x7F);
   return ok(s, `INDR: complete`);
 }
 function executeOuti(s: CPUState): ExecutionResult {
@@ -681,10 +685,12 @@ function executeOuti(s: CPUState): ExecutionResult {
   return ok(s, `OUTI`);
 }
 function executeOtir(s: CPUState): ExecutionResult {
-  const startB = getR8(s, 'B');
-  do { executeOuti(s); } while (getR8(s, 'B') !== 0);
-  s.performance.clockCycles += (startB - 1) * 21 + 16;
-  const rOtir = s.registers.special.R; s.registers.special.R = (rOtir & 0x80) | ((rOtir + 2 * (startB - 1)) & 0x7F);
+  // B=0 berarti 256 iterasi pada Z-80. Jumlah putaran harus dihitung
+  // sungguhan: memakai nilai B awal membuat hitungan siklusnya negatif.
+  let iterations = 0;
+  do { executeOuti(s); iterations++; } while (getR8(s, 'B') !== 0);
+  s.performance.clockCycles += (iterations - 1) * 21 + 16;
+  const rOtir = s.registers.special.R; s.registers.special.R = (rOtir & 0x80) | ((rOtir + 2 * (iterations - 1)) & 0x7F);
   return ok(s, `OTIR: complete`);
 }
 function executeOutd(s: CPUState): ExecutionResult {
@@ -694,10 +700,12 @@ function executeOutd(s: CPUState): ExecutionResult {
   return ok(s, `OUTD`);
 }
 function executeOtdr(s: CPUState): ExecutionResult {
-  const startB = getR8(s, 'B');
-  do { executeOutd(s); } while (getR8(s, 'B') !== 0);
-  s.performance.clockCycles += (startB - 1) * 21 + 16;
-  const rOtdr = s.registers.special.R; s.registers.special.R = (rOtdr & 0x80) | ((rOtdr + 2 * (startB - 1)) & 0x7F);
+  // B=0 berarti 256 iterasi pada Z-80. Jumlah putaran harus dihitung
+  // sungguhan: memakai nilai B awal membuat hitungan siklusnya negatif.
+  let iterations = 0;
+  do { executeOutd(s); iterations++; } while (getR8(s, 'B') !== 0);
+  s.performance.clockCycles += (iterations - 1) * 21 + 16;
+  const rOtdr = s.registers.special.R; s.registers.special.R = (rOtdr & 0x80) | ((rOtdr + 2 * (iterations - 1)) & 0x7F);
   return ok(s, `OTDR: complete`);
 }
 // ─── Jump / Call / Ret / Stack / Interrupt ───────────────────────────
