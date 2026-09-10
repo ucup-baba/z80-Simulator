@@ -6,8 +6,53 @@
 import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTheme } from './ThemeContext';
-import { Zap, StepForward, Play, Pause, Download, Upload, RotateCcw, Gauge, BookOpenCheck, ChevronDown, X } from 'lucide-react';
+import { Zap, StepForward, Play, Pause, Download, Upload, RotateCcw, Gauge, BookOpenCheck, ChevronDown, X, Save } from 'lucide-react';
 import { examplePrograms } from '../data/examplePrograms';
+
+/**
+ * Menyimpan file assembly (.asm) dengan dialog "Save As" asli bawaan sistem
+ * (File System Access API) sehingga pengguna bisa memilih lokasi folder.
+ * Jika browser tidak mendukung, otomatis fallback ke unduhan browser.
+ */
+export async function saveAssemblyFile(content: string, suggestedName: string = 'program.asm'): Promise<boolean> {
+  const fileName = suggestedName.endsWith('.asm') ? suggestedName : `${suggestedName}.asm`;
+
+  // Coba File System Access API (membuka jendela dialog Save As asli OS untuk pilih folder)
+  if (typeof window !== 'undefined' && 'showSaveFilePicker' in window) {
+    try {
+      const handle = await (window as any).showSaveFilePicker({
+        suggestedName: fileName,
+        types: [
+          {
+            description: 'Z-80 Assembly Source (*.asm)',
+            accept: {
+              'text/plain': ['.asm', '.z80', '.txt'],
+            },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      return true;
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        return false; // Pengguna membatalkan dialog pemilih file
+      }
+      console.warn('showSaveFilePicker error, fallback ke unduhan browser:', err);
+    }
+  }
+
+  // Fallback standar download
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+  return true;
+}
 
 interface ControlPanelProps {
   onLoad: () => void;
@@ -19,8 +64,10 @@ interface ControlPanelProps {
   hasProgram: boolean;
   isCodeDirty?: boolean;
   halted?: boolean;
-  // Export/Import
+  // Save As / Import
   sourceCode?: string;
+  fileName?: string;
+  onSaveCode?: () => void;
   onImportCode?: (code: string) => void;
   // Speed
   speed?: number;
@@ -84,7 +131,7 @@ const ControlButton: React.FC<ControlButtonProps> = ({
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   onLoad, onStep, onRun, onPause, onReset, isRunning, hasProgram, isCodeDirty = false, halted = false,
-  sourceCode = '', onImportCode, speed = 50, onSpeedChange, onShowShortcuts, onLoadExample, onRunBlocked,
+  sourceCode = '', fileName = 'program.asm', onSaveCode, onImportCode, speed = 50, onSpeedChange, onShowShortcuts, onLoadExample, onRunBlocked,
 }) => {
   const { isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -97,15 +144,14 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
   const canStepOrRun = hasProgram && !isCodeDirty && !halted;
 
-  // Export .asm file
-  const handleExport = () => {
-    const blob = new Blob([sourceCode], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'program.asm';
-    a.click();
-    URL.revokeObjectURL(url);
+  // Save As .asm file (bisa memilih folder dengan File System Access API)
+  const handleSaveAs = async () => {
+    if (!sourceCode) return;
+    if (onSaveCode) {
+      onSaveCode();
+      return;
+    }
+    await saveAssemblyFile(sourceCode, fileName);
   };
 
   // Import .asm file
@@ -205,16 +251,16 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
         <div className={`w-px h-6 sm:h-8 ${isDark ? 'bg-zinc-700' : 'bg-gray-200'} hidden sm:block`} />
 
-        {/* Export / Import */}
+        {/* Save As / Import */}
         <ControlButton
-          onClick={handleExport}
+          onClick={handleSaveAs}
           disabled={!sourceCode}
           variant="ghost"
           isDark={isDark}
           small
-          title="Export .asm file"
-          icon={<Download className="w-4 h-4" />}
-          label="Export"
+          title="Save As .asm file (Pilih lokasi folder)"
+          icon={<Save className="w-4 h-4" />}
+          label="Save As"
         />
         <ControlButton
           onClick={handleImport}
@@ -222,7 +268,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           variant="ghost"
           isDark={isDark}
           small
-          title="Import .asm file"
+          title="Import / Buka .asm file"
           icon={<Upload className="w-4 h-4" />}
           label="Import"
         />

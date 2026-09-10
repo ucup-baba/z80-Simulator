@@ -10,7 +10,7 @@ import { useFeatureFlags } from '../z80/presentation/FeatureToggleContext';
 import { useToast } from '../z80/presentation/ToastContext';
 import { CodeEditor } from '../z80/presentation/CodeEditor';
 import { RegisterDashboard } from '../z80/presentation/RegisterDashboard';
-import { ControlPanel } from '../z80/presentation/ControlPanel';
+import { ControlPanel, saveAssemblyFile } from '../z80/presentation/ControlPanel';
 import { ExecutionLog } from '../z80/presentation/ExecutionLog';
 import { MemoryViewer } from '../z80/presentation/MemoryViewer';
 import { MemoryEditorPanel } from '../z80/presentation/MemoryEditorPanel';
@@ -40,7 +40,7 @@ import {
 import {
   Code, CircuitBoard, Database, List, Terminal, Eye, Layers, Activity,
   Cpu, BookOpen, Sparkles, Settings2, Sun, Moon, LogIn, LogOut, MoreVertical, FileText,
-  Edit3, Download, Copy, Trash2, FileCheck2
+  Edit3, Download, Copy, Trash2, FileCheck2, Save
 } from 'lucide-react';
 import { useAuthStore } from '../z80/adapters/useAuthStore';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -342,23 +342,34 @@ export default function App() {
     addToast(`Renamed to ${formatted}`, 'info', 2000);
   }, [editingName, addToast]);
 
-  // Multi-file: export single tab
-  const exportFileTab = useCallback((id: string) => {
+  // Multi-file: save single tab
+  const exportFileTab = useCallback(async (id: string) => {
     const tab = fileTabs.find(f => f.id === id);
     if (!tab) return;
     if (!tab.content.trim()) {
       addToast('File is empty', 'warning', 2000);
       return;
     }
-    const blob = new Blob([tab.content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = tab.name.endsWith('.asm') ? tab.name : `${tab.name}.asm`;
-    a.click();
-    URL.revokeObjectURL(url);
-    addToast(`Exported ${tab.name}`, 'success', 2000);
+    const saved = await saveAssemblyFile(tab.content, tab.name);
+    if (saved) {
+      addToast(`Saved ${tab.name}`, 'success', 2000);
+    }
   }, [fileTabs, addToast]);
+
+  // Save current active tab / code (dengan dialog pemilihan folder)
+  const handleSaveCurrentCode = useCallback(async () => {
+    const activeTab = fileTabs.find(f => f.id === activeFileId);
+    const content = undoRedo.currentValue;
+    if (!content.trim()) {
+      addToast('File is empty', 'warning', 2000);
+      return;
+    }
+    const name = activeTab?.name || 'program.asm';
+    const saved = await saveAssemblyFile(content, name);
+    if (saved) {
+      addToast(`Saved ${name}`, 'success', 2000);
+    }
+  }, [fileTabs, activeFileId, undoRedo.currentValue, addToast]);
 
   // Multi-file: duplicate tab
   const duplicateFileTab = useCallback((id: string) => {
@@ -572,8 +583,8 @@ export default function App() {
                         disabled={!f.content.trim()}
                         className="flex items-center gap-2 cursor-pointer text-xs disabled:opacity-40"
                       >
-                        <Download className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Export (.asm)</span>
+                        <Save className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Save As (.asm)</span>
                       </ContextMenuItem>
 
                       <ContextMenuItem
@@ -924,6 +935,8 @@ export default function App() {
           onLoad={handleLoad} onStep={stepInstruction} onRun={() => runProgram(speed)} onPause={pauseProgram} onReset={handleReset}
           isRunning={isRunning} hasProgram={program !== null} isCodeDirty={store.isCodeDirty} halted={cpu.halted}
           sourceCode={undoRedo.currentValue} onImportCode={handleImport}
+          fileName={fileTabs.find(f => f.id === activeFileId)?.name || 'program.asm'}
+          onSaveCode={handleSaveCurrentCode}
           speed={speed} onSpeedChange={(newSpeed) => {
             setSpeed(newSpeed);
             setStoreSpeed(newSpeed);
