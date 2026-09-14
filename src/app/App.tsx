@@ -131,6 +131,8 @@ export default function App() {
   const [presetProfile, setPresetProfile] = useState<ValidatorPresetProfile | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(false);
   const [isValidationMode, setIsValidationMode] = useState<boolean>(false);
+  // Mode fokus angket (?validasi=mahasiswa): hanya form angket, tanpa simulator
+  const [isAngketOnly, setIsAngketOnly] = useState<boolean>(false);
   const [showDashboard, setShowDashboard] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -154,7 +156,16 @@ export default function App() {
     }
 
     const validasiParam = params.get('validasi')?.toLowerCase();
-    if (validasiParam && VALIDATOR_PROFILES[validasiParam]) {
+    if (validasiParam === 'mahasiswa') {
+      // Responden mahasiswa (mayoritas via HP): langsung ke angket, tanpa welcome modal,
+      // manual book, maupun simulator — tidak ada yang bisa dibuka selain form
+      setPresetProfile(VALIDATOR_PROFILES.mahasiswa);
+      setValidationType('mahasiswa');
+      setIsValidationMode(true);
+      setIsAngketOnly(true);
+      setShowManualBook(false);
+      setShowValidationModal(true);
+    } else if (validasiParam && VALIDATOR_PROFILES[validasiParam]) {
       const profile = VALIDATOR_PROFILES[validasiParam];
       setPresetProfile(profile);
       setValidationType(profile.type);
@@ -708,6 +719,21 @@ export default function App() {
 
   if (showDashboard) {
     return <ValidationDashboard onBackToSimulator={() => setShowDashboard(false)} />;
+  }
+
+  if (isAngketOnly) {
+    return (
+      <div className={`fixed inset-0 ${bg} ${text} overflow-hidden`}>
+        <ValidationModal
+          isOpen={true}
+          onClose={() => {}}
+          initialType="mahasiswa"
+          presetProfile={presetProfile}
+          windowMode="modal"
+          focusMode
+        />
+      </div>
+    );
   }
 
   return (

@@ -26,6 +26,8 @@ interface ValidationModalProps {
   panelWidth?: number;
   onPanelWidthChange?: (width: number) => void;
   onTryCode?: (code: string) => void;
+  // Mode fokus angket (responden HP): tanpa simulator, tanpa uji coba, tanpa tombol tutup/pindah mode
+  focusMode?: boolean;
 }
 
 export const ValidationModal: React.FC<ValidationModalProps> = ({
@@ -37,7 +39,8 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
   onWindowModeChange,
   panelWidth: panelWidthProp,
   onPanelWidthChange,
-  onTryCode
+  onTryCode,
+  focusMode = false
 }) => {
   const { isDark } = useTheme();
   const [activeType, setActiveType] = useState<'materi' | 'media' | 'mahasiswa' | 'dosen'>(initialType);
@@ -353,7 +356,7 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
         <div
           className={`print:hidden ${
             windowMode === 'modal'
-              ? 'fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm pointer-events-auto'
+              ? `fixed inset-0 z-[100] flex items-center justify-center ${focusMode ? 'p-0 sm:p-4' : 'p-2 sm:p-4'} bg-black/70 backdrop-blur-sm pointer-events-auto`
               : 'w-full h-full pointer-events-none relative z-50'
           }`}
         >
@@ -361,7 +364,9 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
             className={`${bg} transition-all duration-150 relative ${
               windowMode === 'split'
                 ? 'w-full h-full flex flex-col border-l shadow-2xl border-zinc-700/80 overflow-hidden pointer-events-auto'
-                : 'w-full max-w-4xl h-[92vh] sm:h-[88vh] shadow-2xl rounded-2xl border flex flex-col overflow-hidden pointer-events-auto'
+                : focusMode
+                  ? 'w-full max-w-4xl h-full sm:h-[88vh] shadow-2xl rounded-none sm:rounded-2xl border-0 sm:border flex flex-col overflow-hidden pointer-events-auto'
+                  : 'w-full max-w-4xl h-[92vh] sm:h-[88vh] shadow-2xl rounded-2xl border flex flex-col overflow-hidden pointer-events-auto'
             }`}
           >
             {/* Drag Handle to Resize Split Width (Visible on desktop in split mode) */}
@@ -388,16 +393,21 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-bold text-sm sm:text-base truncate flex items-center gap-2">
-                    Form Validasi R&amp;D
-                    <span className="hidden sm:inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                      {windowMode === 'split' ? `${panelWidth}px` : 'Layar Penuh'}
-                    </span>
+                    {focusMode ? 'Angket Respons Mahasiswa' : 'Form Validasi R&D'}
+                    {!focusMode && (
+                      <span className="hidden sm:inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                        {windowMode === 'split' ? `${panelWidth}px` : 'Layar Penuh'}
+                      </span>
+                    )}
                   </h3>
-                  <p className={`text-xs truncate ${textMuted}`}>Tarik garis kiri untuk atur lebar panel</p>
+                  <p className={`text-xs truncate ${textMuted}`}>
+                    {focusMode ? 'Isi identitas & semua butir, lalu tekan Kirim' : 'Tarik garis kiri untuk atur lebar panel'}
+                  </p>
                 </div>
               </div>
 
-              {/* Toolbar Controls */}
+              {/* Toolbar Controls (disembunyikan di mode fokus agar responden tidak bisa keluar/pindah mode) */}
+              {!focusMode && (
               <div className="flex items-center gap-2 flex-shrink-0">
                 {/* View Mode Switcher */}
                 <div className={`flex items-center gap-1 p-1 rounded-xl border text-xs ${isDark ? 'bg-zinc-950 border-zinc-800' : 'bg-gray-200/80 border-gray-300'}`}>
@@ -445,6 +455,7 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
                   <X className="w-5 h-5" />
                 </button>
               </div>
+              )}
             </div>
 
             {/* Instrument Title Banner */}
@@ -663,8 +674,8 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
                               <p className="text-xs sm:text-sm leading-relaxed font-medium">{item.statement}</p>
                             </div>
 
-                            {/* Testing Guidance & Quick Test Code Button */}
-                            {item.testGuide && (
+                            {/* Testing Guidance & Quick Test Code Button (tidak ditampilkan di mode fokus angket) */}
+                            {item.testGuide && !focusMode && (
                               <div className={`ml-9 p-2.5 sm:p-3 rounded-xl border text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
                                 isDark ? 'bg-blue-950/40 border-blue-800/50 text-blue-300' : 'bg-blue-50/90 border-blue-200 text-blue-900'
                               }`}>
@@ -846,7 +857,7 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto border border-emerald-500/30">
               <CheckCircle className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-bold">Hasil Validasi Terkirim!</h3>
+            <h3 className="text-xl font-bold">{focusMode ? 'Angket Terkirim!' : 'Hasil Validasi Terkirim!'}</h3>
             <p className={`text-xs sm:text-sm ${textMuted} leading-relaxed`}>
               Terima kasih Yth. <strong>{formState.validatorName || 'Bapak/Ibu/Saudara'}</strong> atas waktu, penilaian, dan masukan berharga yang telah Anda berikan untuk pengembangan media pembelajaran Web Simulator Z-80 ini.
             </p>
@@ -861,16 +872,23 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
                 <Printer className="w-4 h-4" />
                 <span>Cetak / Simpan PDF</span>
               </button>
-              <button
-                onClick={() => {
-                  setSubmitSuccess(false);
-                  onClose();
-                }}
-                className={`px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold ${isDark ? 'border-zinc-700 hover:bg-zinc-800' : 'border-gray-300 hover:bg-gray-100'}`}
-              >
-                Selesai
-              </button>
+              {!focusMode && (
+                <button
+                  onClick={() => {
+                    setSubmitSuccess(false);
+                    onClose();
+                  }}
+                  className={`px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold ${isDark ? 'border-zinc-700 hover:bg-zinc-800' : 'border-gray-300 hover:bg-gray-100'}`}
+                >
+                  Selesai
+                </button>
+              )}
             </div>
+            {focusMode && (
+              <p className={`text-[11px] sm:text-xs ${textMuted}`}>
+                Jawaban Anda sudah tersimpan. Anda boleh menutup halaman ini.
+              </p>
+            )}
           </div>
         </div>
       )}
