@@ -566,6 +566,8 @@ export const ValidationModal: React.FC<ValidationModalProps> = ({
                           onChange={(e) => setFormState(prev => ({ ...prev, validatorKeahlian: e.target.value }))}
                           className={`w-full p-2.5 sm:p-3 pr-10 rounded-xl border text-xs sm:text-sm outline-none transition-all cursor-pointer appearance-none hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 ${inputBg}`}
                         >
+                          <option value="2021">2021</option>
+                          <option value="2022">2022</option>
                           <option value="2023">2023</option>
                           <option value="2024">2024</option>
                           <option value="2025">2025</option>

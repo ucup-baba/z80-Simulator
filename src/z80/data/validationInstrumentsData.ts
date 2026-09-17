@@ -416,8 +416,10 @@ export const VALIDATOR_PROFILES: Record<string, ValidatorPresetProfile> = {
     type: 'mahasiswa',
     name: '',
     nip: '',
-    instansi: 'Pendidikan Teknik Elektro UNY',
-    keahlian: 'Mahasiswa Praktikum',
+    // Nilai bawaan harus sama persis dengan salah satu opsi dropdown Program Studi & Angkatan
+    // di ValidationModal, supaya yang tampil di layar = yang tersimpan saat dikirim
+    instansi: 'Pendidikan Teknik Elektro',
+    keahlian: '2023',
     formalTitle: 'Responden Mahasiswa',
     salutation: 'Saudara/i Mahasiswa'
   }
