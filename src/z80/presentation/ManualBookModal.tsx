@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTheme } from './ThemeContext';
 import {
   FileText, X, Search, BookOpen, ChevronRight, ChevronDown, Download, Play,
   Cpu, Layers, CheckCircle2, AlertTriangle, Terminal, Sparkles, HelpCircle, Code2, Database, Binary, Info, Library,
-  Zap, XCircle, RefreshCw, Lightbulb
+  Zap, XCircle, RefreshCw, Lightbulb, Smartphone, Code, CircuitBoard, List, Eye, MoreVertical,
+  FileCheck2, Settings2, Sun, LogIn, StepForward, RotateCcw, Save, Upload, BookOpenCheck
 } from 'lucide-react';
 import { examplePrograms } from '../data/examplePrograms';
 
@@ -11,6 +12,8 @@ interface ManualBookModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTryCode?: (code: string) => void;
+  /** Bab yang langsung dibuka saat modal tampil (default: bab1) */
+  initialChapter?: string;
 }
 
 interface Chapter {
@@ -21,11 +24,22 @@ interface Chapter {
   content: React.ReactNode;
 }
 
-export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClose, onTryCode }) => {
+interface IconGuideItem {
+  icon: React.ReactNode;
+  name: string;
+  desc: string;
+}
+
+export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClose, onTryCode, initialChapter }) => {
   const { isDark } = useTheme();
-  const [activeChapter, setActiveChapter] = useState('bab1');
+  const [activeChapter, setActiveChapter] = useState(initialChapter ?? 'bab1');
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Setiap kali modal dibuka dengan bab tertentu (mis. dari menu "Panduan Ikon"), lompat ke bab itu
+  useEffect(() => {
+    if (isOpen && initialChapter) setActiveChapter(initialChapter);
+  }, [isOpen, initialChapter]);
 
   if (!isOpen) return null;
 
@@ -49,6 +63,78 @@ export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClos
     a.download = 'MANUAL_BOOK_Z80_SIMULATOR.pdf';
     a.click();
   };
+
+  // ─── Data Panduan Ikon Tampilan Android (Mobile) ───
+  const ic = 'w-4 h-4';
+  const headerIcons: IconGuideItem[] = [
+    { icon: <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-500"><span className="w-2 h-2 rounded-full bg-emerald-400" />Ready</span>, name: 'Status CPU', desc: 'Idle = belum ada program, Ready = program siap dijalankan, Running = sedang berjalan, Halted = berhenti di HALT/error.' },
+    { icon: <Sparkles className={`${ic} text-purple-500`} />, name: 'AI Code Review', desc: 'Membuka panel analisis kode: Linter statis (Health Score) dan AI Deep Scan.' },
+    { icon: <MoreVertical className={ic} />, name: 'Menu Lainnya (⋮)', desc: 'Membuka daftar menu tambahan yang disembunyikan pada layar kecil.' },
+  ];
+  const menuIcons: IconGuideItem[] = [
+    { icon: <FileCheck2 className={`${ic} text-purple-500`} />, name: 'Form Validasi (R&D)', desc: 'Membuka instrumen validasi penelitian untuk diisi validator.' },
+    { icon: <BookOpen className={`${ic} text-blue-500`} />, name: 'Materi Dasar', desc: 'Ringkasan materi arsitektur Z-80 lengkap dengan tombol "Coba".' },
+    { icon: <FileText className={`${ic} text-emerald-500`} />, name: 'Buku Panduan', desc: 'Membuka Manual Book ini.' },
+    { icon: <Smartphone className={`${ic} text-sky-500`} />, name: 'Panduan Ikon', desc: 'Langsung membuka bab panduan ikon Android ini.' },
+    { icon: <Settings2 className={`${ic} text-amber-500`} />, name: 'Tools & Features', desc: 'Mengaktifkan/menonaktifkan fitur tambahan (Memory Viewer, autocomplete, dll.).' },
+    { icon: <Sun className={`${ic} text-yellow-500`} />, name: 'Light / Dark Mode', desc: 'Mengganti tema terang atau gelap.' },
+    { icon: <LogIn className={`${ic} text-emerald-500`} />, name: 'Login / Logout', desc: 'Masuk dengan akun Google untuk sinkronisasi file ke cloud.' },
+  ];
+  const subTabIcons: IconGuideItem[] = [
+    { icon: <Terminal className={`${ic} text-blue-500`} />, name: 'ASM', desc: 'Code Editor untuk menulis program assembly.' },
+    { icon: <Database className={`${ic} text-emerald-500`} />, name: 'MemEdit', desc: 'Memory Editor: mengisi byte memori secara langsung.' },
+    { icon: <Eye className={`${ic} text-cyan-500`} />, name: 'Watch', desc: 'Memantau nilai register/alamat memori tertentu.' },
+    { icon: <Layers className={`${ic} text-indigo-500`} />, name: 'Stack', desc: 'Melihat isi stack yang ditunjuk Stack Pointer (SP).' },
+  ];
+  const navIcons: IconGuideItem[] = [
+    { icon: <Code className={`${ic} text-blue-500`} />, name: 'Code', desc: 'Halaman editor kode beserta tab ASM, MemEdit, Watch, dan Stack.' },
+    { icon: <CircuitBoard className={`${ic} text-amber-500`} />, name: 'CPU', desc: 'Register 8/16-bit, register flag F (bit 0–7), dan statistik eksekusi.' },
+    { icon: <Database className={`${ic} text-emerald-500`} />, name: 'Memory', desc: 'Memory Viewer: isi RAM dengan penanda posisi PC dan SP.' },
+    { icon: <List className={`${ic} text-purple-500`} />, name: 'Log', desc: 'Riwayat instruksi yang telah dieksekusi.' },
+  ];
+  const controlIcons: IconGuideItem[] = [
+    { icon: <Zap className={`${ic} text-blue-500`} />, name: 'Load', desc: 'Merakit (assemble) kode lalu memuatnya ke memori. Wajib ditekan sebelum Step/Run.' },
+    { icon: <StepForward className={ic} />, name: 'Step', desc: 'Mengeksekusi satu instruksi saja.' },
+    { icon: <Play className={`${ic} text-emerald-500`} />, name: 'Run / Pause', desc: 'Menjalankan program terus-menerus hingga HALT; saat berjalan berubah menjadi Pause.' },
+    { icon: <RotateCcw className={`${ic} text-red-500`} />, name: 'Reset', desc: 'Mengembalikan register dan PC ke keadaan awal.' },
+    { icon: <Save className={ic} />, name: 'Save As', desc: 'Menyimpan kode ke file .asm di perangkat.' },
+    { icon: <Upload className={ic} />, name: 'Import', desc: 'Membuka file .asm dari perangkat.' },
+    { icon: <BookOpenCheck className={ic} />, name: 'Contoh', desc: 'Memilih contoh program siap pakai.' },
+  ];
+
+  const iconTile = isDark ? 'bg-zinc-900 border-zinc-700 text-zinc-200' : 'bg-white border-gray-300 text-gray-700';
+
+  const renderIconGroup = (num: number, title: string, items: IconGuideItem[]) => (
+    <div className="space-y-2">
+      <h4 className="text-sm font-bold flex items-center gap-2">
+        <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-[11px] flex items-center justify-center flex-shrink-0">{num}</span>
+        {title}
+      </h4>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {items.map((item) => (
+          <div key={item.name} className={`flex items-start gap-3 p-2.5 rounded-lg border ${cardBg}`}>
+            <div className={`min-w-9 h-9 px-1.5 rounded-lg border flex items-center justify-center flex-shrink-0 ${iconTile}`}>
+              {item.icon}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold leading-tight">{item.name}</p>
+              <p className={`text-xs mt-0.5 leading-snug ${textMuted}`}>{item.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Sketsa layar HP dengan zona bernomor
+  const phoneZone = (num: number, label: string, icons: React.ReactNode, extra = '') => (
+    <div className={`relative flex items-center justify-between gap-2 px-2 py-1.5 rounded-md border border-dashed ${isDark ? 'border-blue-500/40 bg-blue-500/5' : 'border-blue-300 bg-blue-50/60'} ${extra}`}>
+      <span className="w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center flex-shrink-0">{num}</span>
+      <div className={`flex-1 flex items-center justify-center gap-2 ${isDark ? 'text-zinc-300' : 'text-gray-600'}`}>{icons}</div>
+      <span className={`text-[9px] font-medium ${textMuted}`}>{label}</span>
+    </div>
+  );
+  const mi = 'w-3 h-3';
 
   const chapters: Chapter[] = [
     {
@@ -159,6 +245,61 @@ export const ManualBookModal: React.FC<ManualBookModalProps> = ({ isOpen, onClos
               <p>• <strong>Run (Ctrl+R)</strong>: Jalankan eksekusi otomatis secara terus-menerus hingga ketemu HALT.</p>
               <p>• <strong>Speed Slider</strong>: Mengatur kecepatan eksekusi simulasi (Lambat – Cepat).</p>
             </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'bab2-android',
+      number: 'BAB II-B',
+      title: 'Panduan Ikon Tampilan Android',
+      icon: <Smartphone className="w-4 h-4 text-sky-500" />,
+      content: (
+        <div className="space-y-5">
+          <p className={`text-sm ${textMuted}`}>
+            Pada layar HP/Android, sebagian tombol hanya ditampilkan sebagai ikon agar muat di layar. Gambar di bawah menunjukkan letak empat area utama; penjelasan setiap ikon ada di bagian bernomor yang sama.
+          </p>
+
+          <div className="flex justify-center">
+            <div className={`w-60 rounded-[2rem] border-[6px] p-2 space-y-1.5 shadow-lg ${isDark ? 'border-zinc-700 bg-zinc-950' : 'border-gray-800 bg-gray-50'}`}>
+              <div className={`mx-auto w-14 h-1 rounded-full ${isDark ? 'bg-zinc-700' : 'bg-gray-300'}`} />
+              {phoneZone(1, 'Header', <><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /><Sparkles className={`${mi} text-purple-500`} /><MoreVertical className={mi} /></>)}
+              {phoneZone(2, 'Tab', <><Terminal className={mi} /><Database className={mi} /><Eye className={mi} /><Layers className={mi} /></>)}
+              <div className={`h-28 rounded-md border flex flex-col justify-center gap-1 px-3 ${isDark ? 'border-zinc-800 bg-zinc-900' : 'border-gray-200 bg-white'}`}>
+                <span className="font-mono text-[9px] text-emerald-500">LD A, 05H</span>
+                <span className="font-mono text-[9px] text-emerald-500">ADD A, 03H</span>
+                <span className="font-mono text-[9px] text-emerald-500">HALT</span>
+                <span className={`text-[9px] text-center mt-1 ${textMuted}`}>Area isi panel</span>
+              </div>
+              {phoneZone(3, 'Navigasi', <><Code className={mi} /><CircuitBoard className={mi} /><Database className={mi} /><List className={mi} /></>)}
+              {phoneZone(4, 'Kontrol', <><Zap className={`${mi} text-blue-500`} /><StepForward className={mi} /><Play className={`${mi} text-emerald-500`} /><RotateCcw className={`${mi} text-red-500`} /><Save className={mi} /><Upload className={mi} /></>)}
+            </div>
+          </div>
+
+          {renderIconGroup(1, 'Header (bagian atas layar)', headerIcons)}
+          <div className="space-y-2">
+            <p className={`text-xs ${textMuted}`}>Isi menu <strong>⋮ (Menu Lainnya)</strong>:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {menuIcons.map((item) => (
+                <div key={item.name} className={`flex items-start gap-3 p-2.5 rounded-lg border ${cardBg}`}>
+                  <div className={`w-9 h-9 rounded-lg border flex items-center justify-center flex-shrink-0 ${iconTile}`}>{item.icon}</div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold leading-tight">{item.name}</p>
+                    <p className={`text-xs mt-0.5 leading-snug ${textMuted}`}>{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {renderIconGroup(2, 'Tab Panel Kode (muncul di halaman Code)', subTabIcons)}
+          {renderIconGroup(3, 'Navigasi Bawah (pindah halaman)', navIcons)}
+          {renderIconGroup(4, 'Panel Kontrol Eksekusi (paling bawah)', controlIcons)}
+
+          <div className={`p-3 rounded-lg border flex gap-2 ${isDark ? 'bg-sky-500/10 border-sky-500/30' : 'bg-sky-50 border-sky-200'}`}>
+            <Lightbulb className="w-4 h-4 text-sky-500 flex-shrink-0 mt-0.5" />
+            <p className={`text-xs leading-relaxed ${textMuted}`}>
+              Alur dasar di HP: tulis kode di halaman <strong>Code</strong> → tekan <strong>Load</strong> → tekan <strong>Step</strong> atau <strong>Run</strong> → buka halaman <strong>CPU</strong> untuk melihat perubahan register dan flag. Jika Step/Run ditekan sebelum Load, akan muncul pesan peringatan.
+            </p>
           </div>
         </div>
       )

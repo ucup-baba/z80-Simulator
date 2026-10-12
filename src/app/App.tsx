@@ -40,7 +40,7 @@ import {
 import {
   Code, CircuitBoard, Database, List, Terminal, Eye, Layers, Activity,
   Cpu, BookOpen, Sparkles, Settings2, Sun, Moon, LogIn, LogOut, MoreVertical, FileText,
-  Edit3, Download, Copy, Trash2, FileCheck2, Save
+  Edit3, Download, Copy, Trash2, FileCheck2, Save, Smartphone
 } from 'lucide-react';
 import { useAuthStore } from '../z80/adapters/useAuthStore';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -142,6 +142,8 @@ export default function App() {
   const [showManualBook, setShowManualBook] = useState(() => {
     return !localStorage.getItem('z80sim_manual_seen');
   });
+  // Bab Manual Book yang dibuka (undefined = bab pertama)
+  const [manualChapter, setManualChapter] = useState<string | undefined>(undefined);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -755,7 +757,7 @@ export default function App() {
             {/* AI Review button - Always visible */}
             <button onClick={() => setShowAIFeedback(true)}
               className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-purple-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-purple-600 border border-gray-200'}`}
-              title="AI Code Review">
+              title="AI Code Review" aria-label="AI Code Review">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
@@ -778,7 +780,7 @@ export default function App() {
               )}
 
               {/* Manual Book button */}
-              <button onClick={() => setShowManualBook(true)}
+              <button onClick={() => { setManualChapter(undefined); setShowManualBook(true); }}
                 className={`p-1.5 sm:p-2 rounded-lg transition-all duration-300 hover:scale-110 ${isDark ? 'bg-zinc-800 hover:bg-zinc-700 text-emerald-400 border border-zinc-700' : 'bg-gray-100 hover:bg-gray-200 text-emerald-600 border border-gray-200'}`}
                 title="Buku Panduan (Manual Book)">
                 <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -822,7 +824,7 @@ export default function App() {
 
             {/* Mobile Menu Toggle */}
             <div className="sm:hidden relative" ref={mobileMenuRef}>
-              <button onClick={() => setShowMobileMenu(!showMobileMenu)}
+              <button onClick={() => setShowMobileMenu(!showMobileMenu)} title="Menu lainnya" aria-label="Menu lainnya" aria-expanded={showMobileMenu}
                 className={`p-1.5 rounded-lg transition-all duration-300 hover:scale-110 ${showMobileMenu ? (isDark ? 'bg-zinc-700 text-zinc-100' : 'bg-gray-200 text-gray-900') : (isDark ? 'bg-zinc-800 text-zinc-400 border border-zinc-700' : 'bg-gray-100 text-gray-500 border border-gray-200')}`}>
                 <MoreVertical className="w-4 h-4" />
               </button>
@@ -835,8 +837,11 @@ export default function App() {
                   <button onClick={() => { setShowMateriDasar(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm border-t ${isDark ? 'border-zinc-800 text-zinc-200 hover:bg-zinc-800' : 'border-gray-100 text-gray-700 hover:bg-gray-50'}`}>
                     <BookOpen className="w-4 h-4 text-blue-500" /> Materi Dasar
                   </button>
-                  <button onClick={() => { setShowManualBook(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm ${isDark ? 'text-zinc-200 hover:bg-zinc-800' : 'text-gray-700 hover:bg-gray-50'}`}>
+                  <button onClick={() => { setManualChapter(undefined); setShowManualBook(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm ${isDark ? 'text-zinc-200 hover:bg-zinc-800' : 'text-gray-700 hover:bg-gray-50'}`}>
                     <FileText className="w-4 h-4 text-emerald-500" /> Buku Panduan (Manual)
+                  </button>
+                  <button onClick={() => { setManualChapter('bab2-android'); setShowManualBook(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm ${isDark ? 'text-zinc-200 hover:bg-zinc-800' : 'text-gray-700 hover:bg-gray-50'}`}>
+                    <Smartphone className="w-4 h-4 text-sky-500" /> Panduan Ikon
                   </button>
                   <button onClick={() => { setShowTools(true); setShowMobileMenu(false); }} className={`w-full text-left px-4 py-3 flex items-center gap-3 text-sm border-t ${isDark ? 'border-zinc-800 text-zinc-200 hover:bg-zinc-800' : 'border-gray-100 text-gray-700 hover:bg-gray-50'}`}>
                     <Settings2 className="w-4 h-4 text-amber-500" /> Tools & Features
@@ -919,10 +924,10 @@ export default function App() {
           <div className="flex justify-center gap-0">
             {mobileNavItems.map((item) => (
               <button key={item.id} onClick={() => setMobilePanel(item.id)}
-                className={`flex-1 flex flex-col items-center justify-center py-2 px-6 transition-colors ${mobilePanel === item.id ? mobileNavActive : mobileNavInactive}`}>
-                <span className="text-lg">{item.icon}</span>
-                <span className="text-xs mt-0.5 font-medium">{item.label}</span>
-                {mobilePanel === item.id && <div className={`w-5 h-0.5 rounded-full mt-1 ${isDark ? 'bg-blue-400' : 'bg-blue-500'}`} />}
+                aria-label={item.label} aria-current={mobilePanel === item.id ? 'page' : undefined}
+                className={`flex-1 flex flex-col items-center justify-center py-1.5 px-2 transition-colors ${mobilePanel === item.id ? mobileNavActive : mobileNavInactive}`}>
+                <span className={`flex items-center justify-center w-12 h-7 rounded-full transition-colors ${mobilePanel === item.id ? (isDark ? 'bg-blue-500/15' : 'bg-blue-500/10') : ''}`}>{item.icon}</span>
+                <span className={`text-[11px] mt-0.5 ${mobilePanel === item.id ? 'font-semibold' : 'font-medium'}`}>{item.label}</span>
               </button>
             ))}
           </div>
@@ -971,6 +976,7 @@ export default function App() {
           localStorage.setItem('z80sim_manual_seen', 'true');
         }}
         onTryCode={(code) => handleCodeChange(code)}
+        initialChapter={manualChapter}
       />
       {/* ─── Autocomplete Dropdown (PC only) ─── */}
       {isEnabled('autocomplete') && (
