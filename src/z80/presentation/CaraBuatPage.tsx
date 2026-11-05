@@ -62,7 +62,7 @@ const STEPS: Step[] = [
     short: 'Bandingkan hasil simulator dengan software acuan.',
     points: [
       'Jalankan program yang sama di OshonSoft dan di simulator, lalu cocokkan register dan flag.',
-      'Simulator ini punya 125 uji otomatis untuk instruksi Z-80, supaya perbaikan baru tidak merusak yang lama.',
+      'Simulator ini punya 133 uji otomatis untuk instruksi Z-80, supaya perbaikan baru tidak merusak yang lama.',
       'AI tetap bisa salah: beberapa perilaku instruksi Z-80 harus dicek ulang secara manual.',
     ],
     tip: 'Simpan setiap kasus bug sebagai uji otomatis. Bug yang sama tidak akan kembali diam-diam.',
@@ -254,7 +254,7 @@ export const CaraBuatPage: React.FC<{ onBackToSimulator: () => void }> = ({ onBa
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {['6 tahap', '9 tools', '125 uji otomatis', 'Memori 64 KB', 'Bisa dipasang di HP'].map((c) => (
+            {['6 tahap', '9 tools', '133 uji otomatis', 'Memori 64 KB', 'Bisa dipasang di HP'].map((c) => (
               <span key={c} className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${isDark ? 'border-zinc-700 text-zinc-300' : 'border-gray-300 text-gray-700'}`}>
                 {c}
               </span>
