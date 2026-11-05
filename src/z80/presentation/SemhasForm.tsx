@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { CheckCircle, ClipboardList, RefreshCw } from 'lucide-react';
+import { ArrowRight, CheckCircle, ClipboardList, RefreshCw, Sparkles } from 'lucide-react';
 import { db } from '../../firebase';
 import { ensureUid } from '../adapters/useAuthStore';
 import { useTheme } from './ThemeContext';
@@ -27,7 +27,10 @@ const EMPTY: SemhasFormState = { nama: '', prodi: '', angkatan: '', saran: '' };
 
 const isValidAngkatan = (v: string) => /^(19|20)\d{2}$/.test(v.trim());
 
-export const SemhasForm: React.FC<{ onBackToSimulator: () => void }> = ({ onBackToSimulator }) => {
+export const SemhasForm: React.FC<{ onBackToSimulator: () => void; onOpenCaraBuat: () => void }> = ({
+  onBackToSimulator,
+  onOpenCaraBuat,
+}) => {
   const { isDark } = useTheme();
   const [form, setForm] = useState<SemhasFormState>(() => {
     try {
@@ -136,16 +139,38 @@ export const SemhasForm: React.FC<{ onBackToSimulator: () => void }> = ({ onBack
         </div>
 
         {submitted ? (
-          <div className="space-y-4">
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex gap-3">
-              <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-              <div className="text-sm space-y-1">
-                <p className="font-bold">Kehadiran tercatat.</p>
-                <p className={textMuted}>
-                  {form.nama} · {form.prodi} · Angkatan {form.angkatan}
-                </p>
+          <div className="space-y-5 animate-fade-in">
+            <div className="text-center space-y-3 py-2">
+              <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center border border-emerald-500/25">
+                <CheckCircle className="w-8 h-8" />
               </div>
+              <h2 className="text-xl font-extrabold">
+                Terima kasih{form.nama ? `, ${form.nama.split(' ')[0]}` : ''}!
+              </h2>
+              <p className={`text-sm leading-relaxed ${textMuted}`}>
+                Kehadiranmu sudah tercatat. Terima kasih sudah meluangkan waktu mengikuti seminar hasil ini
+                {form.saran ? ' dan memberi saran yang sangat membantu.' : '.'}
+              </p>
+              <p className={`text-xs ${textMuted}`}>
+                {form.nama} · {form.prodi} · Angkatan {form.angkatan}
+              </p>
             </div>
+
+            <button
+              type="button"
+              onClick={onOpenCaraBuat}
+              className="group w-full p-4 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-left flex items-center gap-3 shadow-lg shadow-blue-500/20"
+            >
+              <div className="w-10 h-10 shrink-0 rounded-xl bg-white/15 flex items-center justify-center">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm">Mau tahu cara buatnya?</p>
+                <p className="text-xs text-blue-100">Tools, alur kerja dengan AI, dan skill yang dibutuhkan</p>
+              </div>
+              <ArrowRight className="w-5 h-5 shrink-0 transition-transform group-hover:translate-x-1" />
+            </button>
+
             <div className="flex flex-col sm:flex-row gap-2.5">
               <button
                 type="button"
@@ -157,7 +182,7 @@ export const SemhasForm: React.FC<{ onBackToSimulator: () => void }> = ({ onBack
               <button
                 type="button"
                 onClick={onBackToSimulator}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold"
+                className={`flex-1 px-4 py-2.5 rounded-xl border text-sm font-semibold ${isDark ? 'border-zinc-700 hover:bg-zinc-800' : 'border-gray-300 hover:bg-gray-100'}`}
               >
                 Coba Simulator Z-80
               </button>

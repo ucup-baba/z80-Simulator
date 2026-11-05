@@ -28,6 +28,7 @@ import { ValidationModal } from '../z80/presentation/ValidationModal';
 import { ValidationWelcomeModal } from '../z80/presentation/ValidationWelcomeModal';
 import { ValidationDashboard } from '../z80/presentation/ValidationDashboard';
 import { SemhasForm } from '../z80/presentation/SemhasForm';
+import { CaraBuatPage } from '../z80/presentation/CaraBuatPage';
 import { VALIDATOR_PROFILES, ValidatorPresetProfile } from '../z80/data/validationInstrumentsData';
 import { PwaInstallPrompt } from '../z80/presentation/PwaInstallPrompt';
 import { examplePrograms } from '../z80/data/examplePrograms';
@@ -148,6 +149,12 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return params.has('semhas') || window.location.pathname.replace(/\/+$/, '').toLowerCase() === '/semhas';
   });
+  // Halaman "Di Balik Layar" (/cara-buat atau ?cara-buat)
+  const [showCaraBuat, setShowCaraBuat] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.has('cara-buat') || window.location.pathname.replace(/\/+$/, '').toLowerCase() === '/cara-buat';
+  });
 
   const [showManualBook, setShowManualBook] = useState(() => {
     return !localStorage.getItem('z80sim_manual_seen');
@@ -162,7 +169,8 @@ export default function App() {
       setShowDashboard(true);
       return;
     }
-    if (params.has('semhas') || window.location.pathname.replace(/\/+$/, '').toLowerCase() === '/semhas') {
+    const path = window.location.pathname.replace(/\/+$/, '').toLowerCase();
+    if (params.has('semhas') || path === '/semhas' || params.has('cara-buat') || path === '/cara-buat') {
       setShowManualBook(false);
       return;
     }
@@ -733,12 +741,29 @@ export default function App() {
     return <ValidationDashboard onBackToSimulator={() => setShowDashboard(false)} />;
   }
 
+  if (showCaraBuat) {
+    return (
+      <CaraBuatPage
+        onBackToSimulator={() => {
+          window.history.replaceState(null, '', '/');
+          setShowCaraBuat(false);
+          setShowSemhas(false);
+        }}
+      />
+    );
+  }
+
   if (showSemhas) {
     return (
       <SemhasForm
         onBackToSimulator={() => {
           window.history.replaceState(null, '', '/');
           setShowSemhas(false);
+        }}
+        onOpenCaraBuat={() => {
+          window.history.pushState(null, '', '/cara-buat');
+          window.scrollTo(0, 0);
+          setShowCaraBuat(true);
         }}
       />
     );
