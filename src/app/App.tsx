@@ -27,6 +27,7 @@ import { ManualBookModal } from '../z80/presentation/ManualBookModal';
 import { ValidationModal } from '../z80/presentation/ValidationModal';
 import { ValidationWelcomeModal } from '../z80/presentation/ValidationWelcomeModal';
 import { ValidationDashboard } from '../z80/presentation/ValidationDashboard';
+import { SemhasForm } from '../z80/presentation/SemhasForm';
 import { VALIDATOR_PROFILES, ValidatorPresetProfile } from '../z80/data/validationInstrumentsData';
 import { PwaInstallPrompt } from '../z80/presentation/PwaInstallPrompt';
 import { examplePrograms } from '../z80/data/examplePrograms';
@@ -136,9 +137,16 @@ export default function App() {
   const [showDashboard, setShowDashboard] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      return params.has('hasil') || window.location.search.toLowerCase().includes('hasil');
+      return params.has('hasil') || window.location.search.toLowerCase().includes('hasil')
+        || window.location.pathname.replace(/\/+$/, '').toLowerCase() === '/hasil';
     }
     return false;
+  });
+  // Daftar hadir seminar hasil (?semhas atau /semhas): hanya form, tanpa simulator
+  const [showSemhas, setShowSemhas] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.has('semhas') || window.location.pathname.replace(/\/+$/, '').toLowerCase() === '/semhas';
   });
 
   const [showManualBook, setShowManualBook] = useState(() => {
@@ -152,6 +160,10 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     if (params.has('hasil') || window.location.search.toLowerCase().includes('hasil')) {
       setShowDashboard(true);
+      return;
+    }
+    if (params.has('semhas') || window.location.pathname.replace(/\/+$/, '').toLowerCase() === '/semhas') {
+      setShowManualBook(false);
       return;
     }
 
@@ -719,6 +731,17 @@ export default function App() {
 
   if (showDashboard) {
     return <ValidationDashboard onBackToSimulator={() => setShowDashboard(false)} />;
+  }
+
+  if (showSemhas) {
+    return (
+      <SemhasForm
+        onBackToSimulator={() => {
+          window.history.replaceState(null, '', '/');
+          setShowSemhas(false);
+        }}
+      />
+    );
   }
 
   if (isAngketOnly) {

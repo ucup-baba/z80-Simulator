@@ -38,6 +38,29 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────────────────────
+    // Daftar hadir peserta seminar hasil (?semhas).
+    // Pengisi menulis satu dokumen miliknya sendiri (id = uid) dan
+    // boleh membacanya kembali; daftar lengkap hanya untuk admin.
+    // ─────────────────────────────────────────────────────────────
+    function isValidSemhas(d) {
+      return d.keys().hasOnly(['uid', 'nama', 'prodi', 'angkatan', 'saran', 'submittedAt'])
+        && d.uid == request.auth.uid
+        && d.nama is string && d.nama.size() > 0 && d.nama.size() <= 120
+        && d.prodi is string && d.prodi.size() > 0 && d.prodi.size() <= 100
+        && d.angkatan is string && d.angkatan.matches('^(19|20)[0-9]{2}$')
+        && d.saran is string && d.saran.size() <= 2000
+        && d.submittedAt == request.time;
+    }
+
+    match /semhas_attendance/{userId} {
+      allow read, delete: if isAdmin();
+      allow get: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && isValidSemhas(request.resource.data);
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // Jawaban instrumen validasi.
     // Berisi data pribadi: nama, NIP/NIDN, instansi, dan tanda tangan.
     // Publik TIDAK boleh membaca apa pun di koleksi ini.
