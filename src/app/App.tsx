@@ -905,7 +905,7 @@ export default function App() {
             </div>
           )}
           {mobilePanel === 'memory' && (
-            <div className="h-full overflow-hidden flex flex-col items-center justify-center">
+            <div className={`h-full overflow-hidden flex flex-col ${isEnabled('memoryViewer') ? '' : 'items-center justify-center'}`}>
               {isEnabled('memoryViewer') ? (
                 <MemoryViewer memory={cpu.memory} pc={cpu.registers.registers16.PC} sp={cpu.registers.registers16.SP} displayRows={16} />
               ) : (

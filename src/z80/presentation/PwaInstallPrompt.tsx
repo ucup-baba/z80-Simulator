@@ -81,14 +81,14 @@ export const PwaInstallPrompt: React.FC = () => {
   if (!showPrompt) return null;
 
   return (
-    <div className={`fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-bottom-5 ${
+    <div className={`fixed bottom-32 md:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-md md:w-auto md:max-w-none flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-bottom-5 ${
       isDark ? 'bg-zinc-800 text-zinc-100 border border-zinc-700 shadow-black/50' : 'bg-white text-gray-900 border border-gray-200 shadow-gray-200/50'
     }`}>
       <div className={`p-2 rounded-lg flex-shrink-0 ${isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
         <Download className="w-5 h-5" />
       </div>
       
-      <div className="flex flex-col pr-2 sm:pr-4">
+      <div className="flex flex-col flex-1 min-w-0 pr-1 sm:pr-4">
         <span className="text-sm font-bold antialiased">Install Z-80 Simulator</span>
         <span className={`text-xs ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>Akses lebih cepat & main offline</span>
       </div>
