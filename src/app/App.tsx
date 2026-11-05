@@ -27,6 +27,8 @@ import { ManualBookModal } from '../z80/presentation/ManualBookModal';
 import { ValidationModal } from '../z80/presentation/ValidationModal';
 import { ValidationWelcomeModal } from '../z80/presentation/ValidationWelcomeModal';
 import { ValidationDashboard } from '../z80/presentation/ValidationDashboard';
+import { SemhasForm } from '../z80/presentation/SemhasForm';
+import { CaraBuatPage } from '../z80/presentation/CaraBuatPage';
 import { VALIDATOR_PROFILES, ValidatorPresetProfile } from '../z80/data/validationInstrumentsData';
 import { PwaInstallPrompt } from '../z80/presentation/PwaInstallPrompt';
 import { examplePrograms } from '../z80/data/examplePrograms';
@@ -131,12 +133,27 @@ export default function App() {
   const [presetProfile, setPresetProfile] = useState<ValidatorPresetProfile | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(false);
   const [isValidationMode, setIsValidationMode] = useState<boolean>(false);
+  // Mode fokus angket (?validasi=mahasiswa): hanya form angket, tanpa simulator
+  const [isAngketOnly, setIsAngketOnly] = useState<boolean>(false);
   const [showDashboard, setShowDashboard] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      return params.has('hasil') || window.location.search.toLowerCase().includes('hasil');
+      return params.has('hasil') || window.location.search.toLowerCase().includes('hasil')
+        || window.location.pathname.replace(/\/+$/, '').toLowerCase() === '/hasil';
     }
     return false;
+  });
+  // Daftar hadir seminar hasil (?semhas atau /semhas): hanya form, tanpa simulator
+  const [showSemhas, setShowSemhas] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.has('semhas') || window.location.pathname.replace(/\/+$/, '').toLowerCase() === '/semhas';
+  });
+  // Halaman "Di Balik Layar" (/cara-buat atau ?cara-buat)
+  const [showCaraBuat, setShowCaraBuat] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.has('cara-buat') || window.location.pathname.replace(/\/+$/, '').toLowerCase() === '/cara-buat';
   });
 
   const [showManualBook, setShowManualBook] = useState(() => {
@@ -154,9 +171,23 @@ export default function App() {
       setShowDashboard(true);
       return;
     }
+    const path = window.location.pathname.replace(/\/+$/, '').toLowerCase();
+    if (params.has('semhas') || path === '/semhas' || params.has('cara-buat') || path === '/cara-buat') {
+      setShowManualBook(false);
+      return;
+    }
 
     const validasiParam = params.get('validasi')?.toLowerCase();
-    if (validasiParam && VALIDATOR_PROFILES[validasiParam]) {
+    if (validasiParam === 'mahasiswa') {
+      // Responden mahasiswa (mayoritas via HP): langsung ke angket, tanpa welcome modal,
+      // manual book, maupun simulator — tidak ada yang bisa dibuka selain form
+      setPresetProfile(VALIDATOR_PROFILES.mahasiswa);
+      setValidationType('mahasiswa');
+      setIsValidationMode(true);
+      setIsAngketOnly(true);
+      setShowManualBook(false);
+      setShowValidationModal(true);
+    } else if (validasiParam && VALIDATOR_PROFILES[validasiParam]) {
       const profile = VALIDATOR_PROFILES[validasiParam];
       setPresetProfile(profile);
       setValidationType(profile.type);
@@ -710,6 +741,49 @@ export default function App() {
 
   if (showDashboard) {
     return <ValidationDashboard onBackToSimulator={() => setShowDashboard(false)} />;
+  }
+
+  if (showCaraBuat) {
+    return (
+      <CaraBuatPage
+        onBackToSimulator={() => {
+          window.history.replaceState(null, '', '/');
+          setShowCaraBuat(false);
+          setShowSemhas(false);
+        }}
+      />
+    );
+  }
+
+  if (showSemhas) {
+    return (
+      <SemhasForm
+        onBackToSimulator={() => {
+          window.history.replaceState(null, '', '/');
+          setShowSemhas(false);
+        }}
+        onOpenCaraBuat={() => {
+          window.history.pushState(null, '', '/cara-buat');
+          window.scrollTo(0, 0);
+          setShowCaraBuat(true);
+        }}
+      />
+    );
+  }
+
+  if (isAngketOnly) {
+    return (
+      <div className={`fixed inset-0 ${bg} ${text} overflow-hidden`}>
+        <ValidationModal
+          isOpen={true}
+          onClose={() => {}}
+          initialType="mahasiswa"
+          presetProfile={presetProfile}
+          windowMode="modal"
+          focusMode
+        />
+      </div>
+    );
   }
 
   return (
