@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
-import { Check, Copy, MessageSquare, Search, Trash2, Users } from 'lucide-react';
+import { Check, Copy, MessageSquare, Printer, Search, Trash2, Users } from 'lucide-react';
 import { db } from '../../firebase';
 import { SEMHAS_COLLECTION } from './SemhasForm';
 
@@ -81,6 +81,86 @@ export const SemhasRecap: React.FC<{ isDark: boolean; cardBg: string; textMuted:
     }
   };
 
+  // Cetak daftar hadir lewat iframe tersembunyi, jadi tidak diblokir popup blocker.
+  // Di dialog cetak browser, pilih "Simpan sebagai PDF" untuk mengunduh berkas PDF.
+  const printPdf = () => {
+    const esc = (v: unknown) =>
+      String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+    const fullTime = (ts: any) => {
+      const d = toDate(ts);
+      return d ? d.toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+    };
+    const printedAt = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
+    const rows = entries
+      .map(
+        (e, i) => `<tr>
+          <td class="c">${i + 1}</td>
+          <td>${esc(e.nama)}</td>
+          <td>${esc(e.prodi)}</td>
+          <td class="c">${esc(e.angkatan)}</td>
+          <td class="saran">${esc(e.saran) || '—'}</td>
+          <td class="t">${esc(fullTime(e.submittedAt))}</td>
+        </tr>`
+      )
+      .join('');
+    const html = `<!doctype html><html lang="id"><head><meta charset="utf-8">
+      <title>Daftar Hadir Seminar Hasil</title>
+      <style>
+        @page { size: A4 landscape; margin: 14mm; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Times New Roman', serif; color: #000; font-size: 11pt; margin: 0; }
+        h1 { text-align: center; font-size: 15pt; margin: 0 0 2pt; text-transform: uppercase; }
+        .sub { text-align: center; font-size: 10pt; margin: 0 0 12pt; }
+        .meta { display: flex; justify-content: space-between; font-size: 10pt; margin-bottom: 6pt; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #000; padding: 4pt 6pt; vertical-align: top; }
+        th { background: #e5e7eb; font-size: 10pt; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
+        .c { text-align: center; }
+        .t { white-space: nowrap; font-size: 9.5pt; }
+        .saran { white-space: pre-wrap; word-break: break-word; }
+        .sign { margin-top: 28pt; width: 240pt; margin-left: auto; text-align: center; font-size: 10.5pt; }
+        .sign .line { margin-top: 56pt; border-top: 1px solid #000; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      </style></head><body>
+      <h1>Daftar Hadir Seminar Hasil Penelitian</h1>
+      <p class="sub">Simulator Mikroprosesor Z80</p>
+      <div class="meta"><span>Jumlah peserta: <b>${entries.length}</b></span><span>Dicetak: ${esc(printedAt)}</span></div>
+      <table>
+        <thead><tr>
+          <th style="width:4%">No</th><th style="width:20%">Nama</th><th style="width:16%">Program Studi</th>
+          <th style="width:8%">Angkatan</th><th>Saran &amp; Masukan</th><th style="width:15%">Waktu Hadir</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="sign">Mengetahui,<div class="line"></div></div>
+      </body></html>`;
+
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(iframe);
+    const win = iframe.contentWindow;
+    const docu = iframe.contentDocument;
+    if (!win || !docu) {
+      iframe.remove();
+      setError('Gagal menyiapkan dokumen cetak.');
+      return;
+    }
+    docu.open();
+    docu.write(html);
+    docu.close();
+    const cleanup = () => setTimeout(() => iframe.remove(), 500);
+    win.addEventListener('afterprint', cleanup, { once: true });
+    setTimeout(() => {
+      win.focus();
+      win.print();
+      // Safari tidak selalu memicu afterprint; hapus iframe sebagai cadangan.
+      setTimeout(() => iframe.isConnected && iframe.remove(), 60_000);
+    }, 250);
+  };
+
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     try {
@@ -122,6 +202,18 @@ export const SemhasRecap: React.FC<{ isDark: boolean; cardBg: string; textMuted:
             className="w-full bg-transparent outline-none"
           />
         </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+        <button
+          onClick={printPdf}
+          disabled={entries.length === 0}
+          className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold disabled:opacity-50 ${
+            isDark ? 'border-zinc-700 hover:bg-zinc-800' : 'border-gray-300 hover:bg-gray-100'
+          }`}
+          title="Cetak daftar hadir atau simpan sebagai PDF"
+        >
+          <Printer className="w-4 h-4 text-blue-500" />
+          Cetak / Unduh PDF
+        </button>
         <button
           onClick={copyCsv}
           disabled={entries.length === 0}
@@ -132,6 +224,7 @@ export const SemhasRecap: React.FC<{ isDark: boolean; cardBg: string; textMuted:
           {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-blue-500" />}
           {copied ? 'Tersalin' : 'Salin CSV (untuk Excel)'}
         </button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
