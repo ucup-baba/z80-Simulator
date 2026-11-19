@@ -97,8 +97,8 @@ export const MemoryViewer: React.FC<MemoryViewerProps> = ({ memory, pc = 0, sp =
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3">
-        <div style={{ fontFamily: 'var(--font-mono)' }} className="text-xs">
+      <div className="flex-1 overflow-auto p-3">
+        <div style={{ fontFamily: 'var(--font-mono)' }} className="text-xs w-max">
           {/* Header */}
           <div className={`flex items-center gap-2 pb-2 border-b ${isDark ? 'border-zinc-800' : 'border-gray-200'} mb-1 sticky top-0 ${bg}`}>
             <div className={`w-14 ${subtext}`}>Addr</div>

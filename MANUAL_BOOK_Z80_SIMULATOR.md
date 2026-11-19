@@ -20,18 +20,18 @@
    - 1.2 Keunggulan Media Simulator
    - 1.3 Spesifikasi Sistem yang Direkomendasikan
 2. [BAB II: PENGENALAN ANTARMUKA (UI OVERVIEW)](#-bab-ii-pengenalan-antarmuka-ui-overview)
-   - 2.1 Peta Tata Letak Antarmuka
-   - 2.2 Control Panel (Eksekusi & Toolbar)
-   - 2.3 Code Editor (Assembly Editor)
-   - 2.4 Register Dashboard & Flag Viewer
-   - 2.5 Memory Viewer & Stack Viewer
+   - 2.1 Control Panel (Eksekusi & Toolbar)
+   - 2.2 Code Editor (Assembly Editor)
+   - 2.3 Register Dashboard & Flag Viewer
+   - 2.4 Memory Viewer & Stack Viewer
+   - 2.5 Panduan Ikon Tampilan Android (Mobile)
 3. [BAB III: PANDUAN OPERASIONAL BERTAHAP (STEP-BY-STEP)](#-bab-iii-panduan-operasional-bertahap-step-by-step)
    - 3.1 Menulis & Membuka Kode Assembly
    - 3.2 Melakukan Assemble & Load Program (`Ctrl + L`)
    - 3.3 Eksekusi Langkah-demi-Langkah / Step (`Ctrl + S`)
    - 3.4 Eksekusi Otomatis / Run (`Ctrl + R`) & Pengaturan Kecepatan
    - 3.5 Reset CPU (`Reset`)
-   - 3.6 Mengimpor & Mengekspor File (.asm)
+   - 3.6 Menyimpan (Save As) & Mengimpor File (.asm)
 4. [BAB IV: MEMANFAATKAN FITUR PENDUKUNG & AI ANALYZER](#-bab-iv-memanfaatkan-fitur-pendukung--ai-analyzer)
    - 4.1 Menggunakan Preset Contoh Program Siap Pakai
    - 4.2 Menggunakan Panel Materi Dasar Z-80 & Tombol "Coba"
@@ -88,7 +88,7 @@ Antarmuka Z-80 Simulator dibagi menjadi 2 area utama: **Area Kerja Kiri** (Edito
 │  - Tab CPU Flow Diagram                       │                                │
 ├───────────────────────────────────────────────┴────────────────────────────────┤
 │  Control Panel Bottom Bar:                                                     │
-│  [⚡ Load] | [⏭ Step] [▶ Run] | [Export] [Import] [📚 Contoh] [Gauge Speed] [🔄 Reset] │
+│  [⚡ Load] | [⏭ Step] [▶ Run] | [Save As] [Import] [📚 Contoh] [Gauge Speed] [🔄 Reset]│
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -98,7 +98,7 @@ Terletak di bagian bawah layar (pada mode PC) untuk mengontrol jalannya simulasi
 * **⏭ Step (`Ctrl+S`)**: Mengeksekusi **satu baris instruksi** saja untuk mengamati pergerakan register per baris.
 * **▶ Run (`Ctrl+R`)**: Mengeksekusi seluruh program dari awal hingga selesai / bertemu instruksi `HALT`.
 * **🔄 Reset**: Mengembalikan seluruh isi register, flag, dan PC ke kondisi awal (`0000H`).
-* **📥 Export / 📤 Import**: Menyimpan kode ke file `.asm` lokal atau mengunggah file `.asm` dari komputer.
+* **💾 Save As / 📤 Import**: Menyimpan kode ke file `.asm` di lokasi folder pilihan Anda, atau membuka file `.asm` dari perangkat.
 * **📚 Contoh**: Menampilkan *dropdown* pilihan 7 preset program contoh siap pakai.
 * **🎚️ Speed Slider**: Mengatur kecepatan simulasi saat tombol **Run** diaktifkan (Slow → Normal → Fast → Turbo).
 
@@ -122,6 +122,61 @@ Menampilkan status terkini dari seluruh register CPU Z-80:
 ### 2.4 Memory Viewer & Stack Viewer
 * **Memory Viewer**: Menampilkan tabel Hex Dump memori 64KB (alamat `0000H` s.d. `FFFFH`) beserta representasi karakter ASCII di sisi kanan.
 * **PC & SP Highlight**: Baris memori yang ditunjuk oleh `PC` di-highlight warna **Biru**, sedangkan yang ditunjuk `SP` (Stack Pointer) di-highlight warna **Ungu**.
+
+### 2.5 Panduan Ikon Tampilan Android (Mobile)
+Pada layar HP/Android (lebar layar kecil), tata letak berubah menjadi satu kolom dan sebagian tombol hanya ditampilkan sebagai ikon dengan label kecil di bawahnya. Panduan ini juga tersedia di dalam aplikasi melalui menu **⋮ → Panduan Ikon**.
+
+```
++-----------------------------------------+
+| (1) Logo  Z-80  o Status   [AI]   [:]   |  <- Header
+| (2) [ASM] [MemEdit] [Watch] [Stack]     |  <- Tab panel kode
+|                                         |
+|            Area isi panel               |
+|                                         |
+| (3) [Code]  [CPU]  [Memory]  [Log]      |  <- Navigasi bawah
+| (4) Load Step Run Reset Save Imp Contoh |  <- Panel kontrol
++-----------------------------------------+
+```
+
+**① Header**
+
+| Ikon | Nama | Fungsi |
+|---|---|---|
+| ● (titik berwarna) | Status CPU | *Idle* = belum ada program, *Ready* = siap dijalankan, *Running* = sedang berjalan, *Halted* = berhenti di HALT/error |
+| ✨ (Sparkles) | AI Code Review | Membuka panel Linter statis (Health Score) dan AI Deep Scan |
+| ⋮ (tiga titik) | Menu Lainnya | Membuka menu: Form Validasi, Materi Dasar 📖, Buku Panduan 📄, Panduan Ikon 📱, Tools & Features ⚙️, Light/Dark Mode ☀️/🌙, Login/Logout |
+
+**② Tab Panel Kode** (muncul di halaman *Code*)
+
+| Ikon | Nama | Fungsi |
+|---|---|---|
+| `>_` (Terminal) | ASM | Code Editor untuk menulis program assembly |
+| 🛢 (Database) | MemEdit | Memory Editor: mengisi byte memori secara langsung |
+| 👁 (Eye) | Watch | Memantau nilai register/alamat memori tertentu |
+| ☰ (Layers) | Stack | Melihat isi stack yang ditunjuk Stack Pointer (SP) |
+
+**③ Navigasi Bawah** (pindah halaman)
+
+| Ikon | Nama | Fungsi |
+|---|---|---|
+| `< >` (Code) | Code | Halaman editor kode beserta tab ASM, MemEdit, Watch, dan Stack |
+| ▦ (Circuit Board) | CPU | Register 8/16-bit, register flag F (bit 0–7), dan statistik eksekusi |
+| 🛢 (Database) | Memory | Memory Viewer: isi RAM dengan penanda posisi PC dan SP |
+| ≡ (List) | Log | Riwayat instruksi yang telah dieksekusi |
+
+**④ Panel Kontrol Eksekusi**
+
+| Ikon | Nama | Fungsi |
+|---|---|---|
+| ⚡ | Load | Merakit kode dan memuatnya ke memori. Wajib ditekan sebelum Step/Run |
+| ⏭ | Step | Mengeksekusi satu instruksi |
+| ▶ / ⏸ | Run / Pause | Menjalankan program hingga HALT; saat berjalan berubah menjadi Pause |
+| 🔄 | Reset | Mengembalikan register dan PC ke keadaan awal |
+| 💾 | Save As | Menyimpan kode ke file `.asm` |
+| 📤 | Import | Membuka file `.asm` dari perangkat |
+| 📚 | Contoh | Memilih contoh program siap pakai |
+
+> **Alur dasar di HP:** tulis kode di halaman *Code* → tekan **Load** → tekan **Step** atau **Run** → buka halaman *CPU* untuk melihat perubahan register dan flag.
 
 ---
 
@@ -179,8 +234,8 @@ Jika ingin mengulang simulasi dari awal:
 * Klik tombol **🔄 Reset** (berwarna merah di pojok kanan bawah).
 * Nilai semua register `A, B, C, D, E, H, L`, Flag, dan `PC` akan kembali bersih ke `00H` / `0000H`.
 
-### 3.6 Mengimpor & Mengekspor File (.asm)
-* **Menyimpan Kode (Export)**: Klik tombol **📥 Export**, file bernama `program.asm` akan otomatis terunduh ke komputer Anda.
+### 3.6 Menyimpan (Save As) & Mengimpor File (.asm)
+* **Menyimpan Kode (Save As)**: Klik tombol **💾 Save As**, lalu pilih folder dan nama file pada jendela penyimpanan. Pada browser yang tidak mendukung pemilihan folder (mis. sebagian browser Android), file `.asm` otomatis tersimpan ke folder *Download*.
 * **Membuka File Kode (Import)**: Klik tombol **📤 Import**, pilih file ber-ekstensi `.asm` atau `.txt` dari perangkat Anda. Kode akan otomatis tampil di editor.
 
 ---

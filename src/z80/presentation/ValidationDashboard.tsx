@@ -10,6 +10,7 @@ import { PrintableValidationSheet, ValidationFormState } from './PrintableValida
 import { db } from '../../firebase';
 import { collection, getDocs, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { useAuthStore } from '../adapters/useAuthStore';
+import { SemhasRecap } from './SemhasRecap';
 
 export interface SavedValidationResponse {
   id: string;
@@ -35,7 +36,9 @@ export const ValidationDashboard: React.FC<{ onBackToSimulator: () => void }> = 
   const { isDark } = useTheme();
   const { user, loading: authLoading, loginWithGoogle } = useAuthStore();
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'responses' | 'analysis'>('responses');
+  const [activeTab, setActiveTab] = useState<'responses' | 'analysis' | 'semhas'>(() =>
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'semhas' ? 'semhas' : 'responses'
+  );
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [responses, setResponses] = useState<SavedValidationResponse[]>([]);
@@ -456,6 +459,18 @@ export const ValidationDashboard: React.FC<{ onBackToSimulator: () => void }> = 
             <BarChart3 className="w-4 h-4" />
             <span>Analisis Bab IV</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('semhas')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              activeTab === 'semhas'
+                ? 'bg-blue-600 text-white shadow-md'
+                : isDark ? 'text-zinc-400 hover:text-zinc-200' : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Peserta Semhas</span>
+          </button>
         </div>
 
         {/* ─── TAB 1: DAFTAR RESPONS TERKIRIM ─── */}
@@ -610,6 +625,11 @@ export const ValidationDashboard: React.FC<{ onBackToSimulator: () => void }> = 
             )}
 
           </div>
+        )}
+
+        {/* ─── TAB 3: DAFTAR HADIR SEMINAR HASIL ─── */}
+        {activeTab === 'semhas' && (
+          <SemhasRecap isDark={isDark} cardBg={cardBg} textMuted={textMuted} />
         )}
 
         {/* ─── TAB 2: ANALISIS DATA PENELITIAN (BAB IV) ─── */}

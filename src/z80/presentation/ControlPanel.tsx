@@ -116,10 +116,12 @@ const ControlButton: React.FC<ControlButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`flex items-center justify-center gap-1.5 ${small ? 'px-2 sm:px-3 py-1.5 sm:py-2' : 'px-2.5 sm:px-4 py-1.5 sm:py-2.5'} rounded-lg border transition-all duration-200 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95 ${variants[variant]}`}
+      aria-label={label}
+      className={`flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 min-w-[44px] sm:min-w-0 ${small ? 'px-1.5 sm:px-3 py-1 sm:py-2' : 'px-2 sm:px-4 py-1 sm:py-2.5'} rounded-lg border transition-all duration-200 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95 ${variants[variant]}`}
     >
       {icon}
-      <span className={`font-medium ${small ? 'text-xs' : 'text-xs sm:text-sm'} hidden sm:inline`} style={{ fontFamily: 'var(--font-sans)' }}>{label}</span>
+      {/* Label tetap tampil di HP (teks kecil di bawah ikon) agar fungsi tiap ikon jelas */}
+      <span className={`font-medium whitespace-nowrap leading-none sm:leading-normal text-[10px] ${small ? 'sm:text-xs' : 'sm:text-sm'}`} style={{ fontFamily: 'var(--font-sans)' }}>{label}</span>
       {shortcut && (
         <span className={`ml-1 px-1.5 py-0.5 text-xs rounded ${isDark ? 'bg-black/30' : 'bg-black/10'} hidden lg:inline`} style={{ fontFamily: 'var(--font-mono)' }}>
           {shortcut}
@@ -278,7 +280,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowExamples(!showExamples)}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg border transition-all duration-200 hover:scale-[1.02] active:scale-95 text-xs font-medium ${
+              aria-label="Contoh program"
+              className={`flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 min-w-[44px] sm:min-w-0 px-1.5 sm:px-3 py-1 sm:py-2 rounded-lg border transition-all duration-200 hover:scale-[1.02] active:scale-95 text-xs font-medium ${
                 isDark
                   ? 'bg-transparent hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-transparent'
                   : 'bg-transparent hover:bg-gray-100 text-gray-500 hover:text-gray-700 border-transparent'
@@ -286,8 +289,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               title="Muat contoh program"
             >
               <BookOpenCheck className="w-4 h-4" />
-              <span className="hidden sm:inline">Contoh</span>
-              <ChevronDown className={`w-3 h-3 transition-transform ${showExamples ? 'rotate-180' : ''}`} />
+              <span className="text-[10px] sm:text-xs leading-none sm:leading-normal flex items-center gap-0.5">
+                Contoh
+                <ChevronDown className={`w-3 h-3 hidden sm:block transition-transform ${showExamples ? 'rotate-180' : ''}`} />
+              </span>
             </button>
             {showExamples && createPortal(
               <>
